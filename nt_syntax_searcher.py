@@ -129,6 +129,9 @@ def out_format(format_str: str, row: list[str]) -> str:
     result = result.replace('chapter', get_row_val('Chapter', row))
     result = result.replace('verse', get_row_val('Verse', row))
 
+    # Parsing.
+    result = result.replace('parsing', get_row_val('rmac', row))
+
     return result
 
 
