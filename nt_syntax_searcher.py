@@ -161,7 +161,7 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def out_format(format_str: str, row: list[str]) -> str:
+def out_format(format_str: str, row: list[str], num_rows: int) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
@@ -170,6 +170,9 @@ def out_format(format_str: str, row: list[str]) -> str:
 
     # Parsing.
     result = result.replace('parsing', get_row_val('rmac', row))
+
+    # The number of rows returned as a result.
+    result = result.replace('num_rows', str(num_rows))
 
     return result
 
@@ -214,7 +217,7 @@ def perform_query(query: str, csv_reader: csv.reader) -> str:
         query_result = [row for row in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
 
     # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result) for result in query_result]
+    result_list = [out_format(out_command, result, len(query_result)) for result in query_result]
     result = '\n'.join(result_list)
 
     return result
