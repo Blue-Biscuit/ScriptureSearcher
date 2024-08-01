@@ -1,0 +1,212 @@
+"""A tool to make complex searches through the OpenGNT database,
+to help further biblical studies."""
+
+import csv
+import unicodedata
+
+
+OPEN_GNT_FILEPATH = "OpenGNT_version3_3.csv"
+
+
+def strip_accents(s):
+    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+
+
+def interpret_book_code(code: int):
+    book_list = [
+        'Matthew',
+        'Mark',
+        'Luke',
+        'John',
+        'Acts',
+        'Romans',
+        '1 Corinthians',
+        '2 Corinthians',
+        'Galatians',
+        'Ephesians',
+        'Philippians',
+        'Colossians',
+        '1 Thessalonians',
+        '2 Thessalonians',
+        '1 Timothy',
+        '2 Timothy',
+        'Titus',
+        'Philemon',
+        'Hebrews',
+        'James',
+        '1 Peter',
+        '2 Peter',
+        '1 John',
+        '2 John',
+        '3 John',
+        'Jude',
+        'Revelation'
+    ]
+
+    book_index = code - 40
+    return book_list[book_index]
+
+
+def split_sub_columns(sub_col: str):
+    # Open GNT uses this unicode bar to split columns.
+    result = sub_col.split('｜')
+
+    # Get rid of parens on the first and last element
+    if len(result) > 0:
+        result[0] = result[0][1:]
+        result[-1] = result[-1][:-1]
+
+    return result
+
+
+def get_row_val(field: str, row: list[str]) -> str:
+    """Gets the value of the given field in a row."""
+    # Define the data structure which will be used to map on the result.
+    row_indexing = {
+        "OGNTsort": 0,
+        "TANTsort": 1,
+        "FEATURESsort1": 2,
+        "LevinsohnClauseID": 3,
+        "OTquotation": 4,
+        "BGBSortI": (5, 0),
+        "LTsortI": (5, 1),
+        "STsortI": (5, 2),
+        "Book": (6, 0),
+        "Chapter": (6, 1),
+        "Verse": (6, 2),
+        "OGNTk": (7, 0),
+        "OGNTu": (7, 1),
+        "OGNTa": (7, 2),
+        "lexeme": (7, 3),
+        "rmac": (7, 4),
+        "sn": (7, 5),
+        "BDAGentry": (8, 0),
+        "EDNTentry": (8, 1),
+        "MounceEntry": (8, 2),
+        "GoodrickKohlenbergerNumbers": (8, 3),
+        "LN-LouwNidaNumbers": (8, 4),
+        "transSBLcap": (9, 0),
+        "transSBL": (9, 1),
+        "modernGreek": (9, 2),
+        "Fonetica_Transliteracion": (9, 3),
+        "TBESG": (10, 0),
+        "IT": (10, 1),
+        "LT": (10, 2),
+        "ST": (10, 3),
+        "Espanol": (10, 4),
+        "PMpWord": (11, 0),
+        "PMfWord": (11, 1),
+        "Note": (12, 0),
+        "Mvar": (12, 1),
+        "Mlexeme": (12, 2),
+        "Mrmac": (12, 3),
+        "Msn": (12, 4),
+        "MTBESG": (12, 5)
+    }
+
+    # If the field provided isn't in the structure, error out.
+    if field not in row_indexing:
+        raise ValueError(f'Not a OpenGNT field: {field}')
+
+    mapped = row_indexing[field]
+
+    # If the mapped value is an index, just return that.
+    if isinstance(mapped, int):
+        result = row[mapped]
+
+    # Otherwise, return the specified sub-column value.
+    else:
+        sub_cols = split_sub_columns(row[mapped[0]])
+        result = sub_cols[mapped[1]]
+
+    return result
+
+
+def out_format(format_str: str, row: list[str]) -> str:
+    """Conforms output to the given format string."""
+    # Book, chapter, and verse.
+    result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
+    result = result.replace('chapter', get_row_val('Chapter', row))
+    result = result.replace('verse', get_row_val('Verse', row))
+
+    return result
+
+
+def perform_query(query: str, csv_reader: csv.reader) -> str:
+    """Performs a query, and returns back a table of output."""
+
+    # Tokenize the input.
+    tokens = query.split()
+
+    # Find the lexeme as the first token.
+    lexeme_search = tokens[0]
+
+    # Find all CSV rows which have this lexeme.
+    lexeme_rows = []
+    for row in csv_reader:
+        # Find the lexeme, which is column 7.3.
+        lexeme_found = strip_accents(get_row_val('lexeme', row))
+
+        # If that lexeme is equivalent to the search lexeme, add it to the result table.
+        if lexeme_found == lexeme_search:
+            lexeme_rows.append(row)
+
+    # If the "out" clause was provided, format the string accordingly.
+    if 'out' in query:
+        out_index = query.index('out')
+        out_command = query[out_index + len('out'):]
+        result_list = [out_format(out_command, result) for result in lexeme_rows]
+        result = '\n'.join(result_list)
+
+    # Otherwise, just default to a reference.
+    else:
+        result_list = [out_format('book chapter:verse', result) for result in lexeme_rows]
+        result = '\n'.join(result_list)
+
+    return result
+
+
+def main_loop(gnt_file):
+    """The main query loop."""
+    print('NT Syntax Searcher. By Andrew Huffman')
+    print('Version 7/31/2024')
+    print('Type "help" for usage notes.')
+    print()
+
+    # Loop until exit is given.
+    while True:
+        query = input('> ').strip()
+
+        # Print help.
+        if query.startswith('help'):
+            print('To search for all occurrences of a lexeme, simply type:')
+            print('<lexeme>')
+            print('So, for example, to search for all occurrences of λογος, type:')
+            print('λογος')
+            print('The output is book, chapter, and verse numbers.')
+
+        # Exit.
+        elif query.startswith('exit'):
+            break
+
+        # Don't do anything if a blank line was given.
+        elif len(query) == 0:
+            pass
+
+        # Otherwise, this is interpreted as a query.
+        else:
+            reader = csv.reader(gnt_file, delimiter='\t')
+            query_result = perform_query(query, reader)
+            print(query_result)
+            gnt_file.seek(0)
+
+
+def main():
+    """The main routine."""
+    # Open the dataset and call
+    with open(OPEN_GNT_FILEPATH, 'r') as gnt_file:
+        main_loop(gnt_file)
+
+
+if __name__ == '__main__':
+    main()
