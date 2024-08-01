@@ -47,6 +47,45 @@ def interpret_book_code(code: int):
     return book_list[book_index]
 
 
+def interpret_rmac_code(code: str) -> list[str]:
+    """Interprets an RMAC code, returning a list of attributes rather than in code."""
+    result = []
+
+    case_map = {
+        'N': 'nominative',
+        'G': 'genitive',
+        'A': 'accusative',
+        'D': 'dative'
+    }
+
+    number_map = {
+        'S': 'singular',
+        'P': 'plural'
+    }
+
+    gender_map = {
+        'M': 'masculine',
+        'F': 'feminine',
+        'N': 'neuter'
+    }
+
+    # If it is indicated that this word is a noun or an adjective, then we expect case.
+    if 'N' == code[0] or 'A' == code[0]:
+        case_code = code[2]
+        number_code = code[3]
+        gender_code = code[4]
+        result.append('noun' if 'N' == code[0] else 'adjective')
+        result.append(case_map[case_code])
+        result.append(number_map[number_code])
+        result.append(gender_map[gender_code])
+
+    # Otherwise, we do not yet support interpreting this code.
+    else:
+        raise NotImplementedError(f'Code not yet supported for interpretation: {code}')
+
+    return result
+
+
 def split_sub_columns(sub_col: str):
     # Open GNT uses this unicode bar to split columns.
     result = sub_col.split('｜')
@@ -122,18 +161,32 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def out_format(format_str: str, row: list[str]) -> str:
+def out_format(format_str: str, row: list[str], num_rows: int) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
     result = result.replace('chapter', get_row_val('Chapter', row))
     result = result.replace('verse', get_row_val('Verse', row))
 
+    # Parsing.
+    result = result.replace('parsing', get_row_val('rmac', row))
+
+    # The number of rows returned as a result.
+    result = result.replace('num_rows', str(num_rows))
+
     return result
 
 
 def perform_query(query: str, csv_reader: csv.reader) -> str:
     """Performs a query, and returns back a table of output."""
+    # If the out clause was provided, remove it and save it off -- the user can put anything in here, so we don't want
+    # the tokens from that messing with anything else.
+    if '-out' in query:
+        out_idx = query.index('-out')
+        out_command = query[out_idx + len('-out'):]
+        query = query[:out_idx]
+    else:
+        out_command = 'book chapter:verse'
 
     # Tokenize the input.
     tokens = query.split()
@@ -142,26 +195,30 @@ def perform_query(query: str, csv_reader: csv.reader) -> str:
     lexeme_search = tokens[0]
 
     # Find all CSV rows which have this lexeme.
-    lexeme_rows = []
+    query_result = []
     for row in csv_reader:
         # Find the lexeme, which is column 7.3.
         lexeme_found = strip_accents(get_row_val('lexeme', row))
 
         # If that lexeme is equivalent to the search lexeme, add it to the result table.
         if lexeme_found == lexeme_search:
-            lexeme_rows.append(row)
+            query_result.append(row)
 
-    # If the "out" clause was provided, format the string accordingly.
-    if 'out' in query:
-        out_index = query.index('out')
-        out_command = query[out_index + len('out'):]
-        result_list = [out_format(out_command, result) for result in lexeme_rows]
-        result = '\n'.join(result_list)
+    # Apply the case clause.
+    if '-case' in tokens:
+        case_token_idx = tokens.index('-case') + 1
+        if len(tokens) <= case_token_idx:
+            raise ValueError('Must provided argument to -case.')
 
-    # Otherwise, just default to a reference.
-    else:
-        result_list = [out_format('book chapter:verse', result) for result in lexeme_rows]
-        result = '\n'.join(result_list)
+        case_token = tokens[case_token_idx]
+        if case_token not in ['nominative', 'genitive', 'accusative', 'dative']:
+            raise ValueError(f'Not a Greek case: {case_token}')
+
+        query_result = [row for row in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
+
+    # Format the output according to the given -out parameter.
+    result_list = [out_format(out_command, result, len(query_result)) for result in query_result]
+    result = '\n'.join(result_list)
 
     return result
 
