@@ -177,7 +177,7 @@ def out_format(format_str: str, row: list[str], num_rows: int) -> str:
     return result
 
 
-def perform_query(query: str, csv_reader: csv.reader) -> str:
+def perform_query(query: str, gnt_data: list) -> str:
     """Performs a query, and returns back a table of output."""
     # If the out clause was provided, remove it and save it off -- the user can put anything in here, so we don't want
     # the tokens from that messing with anything else.
@@ -195,14 +195,7 @@ def perform_query(query: str, csv_reader: csv.reader) -> str:
     lexeme_search = tokens[0]
 
     # Find all CSV rows which have this lexeme.
-    query_result = []
-    for row in csv_reader:
-        # Find the lexeme, which is column 7.3.
-        lexeme_found = strip_accents(get_row_val('lexeme', row))
-
-        # If that lexeme is equivalent to the search lexeme, add it to the result table.
-        if lexeme_found == lexeme_search:
-            query_result.append(row)
+    query_result = [(row, idx) for idx, row in enumerate(gnt_data) if strip_accents(get_row_val('lexeme', row)) == lexeme_search]
 
     # Apply the case clause.
     if '-case' in tokens:
@@ -214,10 +207,10 @@ def perform_query(query: str, csv_reader: csv.reader) -> str:
         if case_token not in ['nominative', 'genitive', 'accusative', 'dative']:
             raise ValueError(f'Not a Greek case: {case_token}')
 
-        query_result = [row for row in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
+        query_result = [(row, idx) for row, idx in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
 
     # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result, len(query_result)) for result in query_result]
+    result_list = [out_format(out_command, result[0], len(query_result)) for result in query_result]
     result = '\n'.join(result_list)
 
     return result
@@ -229,6 +222,10 @@ def main_loop(gnt_file):
     print('Version 7/31/2024')
     print('Type "help" for usage notes.')
     print()
+
+    # Load the file into a list, so that we can use list comprehension on it.
+    csv_reader = csv.reader(gnt_file, delimiter='\t')
+    gnt_data = [x for x in csv_reader]
 
     # Loop until exit is given.
     while True:
@@ -252,8 +249,7 @@ def main_loop(gnt_file):
 
         # Otherwise, this is interpreted as a query.
         else:
-            reader = csv.reader(gnt_file, delimiter='\t')
-            query_result = perform_query(query, reader)
+            query_result = perform_query(query, gnt_data)
             print(query_result)
             gnt_file.seek(0)
 
