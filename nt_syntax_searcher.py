@@ -161,7 +161,7 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def out_format(format_str: str, row: list[str], num_rows: int) -> str:
+def out_format(format_str: str, row: list[str], row_index: int, result: list[list[str]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
@@ -172,7 +172,7 @@ def out_format(format_str: str, row: list[str], num_rows: int) -> str:
     result = result.replace('parsing', get_row_val('rmac', row))
 
     # The number of rows returned as a result.
-    result = result.replace('num_rows', str(num_rows))
+    result = result.replace('num_rows', str(len(result)))
 
     return result
 
@@ -195,7 +195,8 @@ def perform_query(query: str, gnt_data: list) -> str:
     lexeme_search = tokens[0]
 
     # Find all CSV rows which have this lexeme.
-    query_result = [(row, idx) for idx, row in enumerate(gnt_data) if strip_accents(get_row_val('lexeme', row)) == lexeme_search]
+    query_result = [(row, idx) for idx, row in enumerate(gnt_data)
+                    if strip_accents(get_row_val('lexeme', row)) == lexeme_search]
 
     # Apply the case clause.
     if '-case' in tokens:
@@ -210,7 +211,7 @@ def perform_query(query: str, gnt_data: list) -> str:
         query_result = [(row, idx) for row, idx in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
 
     # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result[0], len(query_result)) for result in query_result]
+    result_list = [out_format(out_command, result[0], result[1], query_result) for result in query_result]
     result = '\n'.join(result_list)
 
     return result
