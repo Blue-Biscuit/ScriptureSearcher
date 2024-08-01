@@ -161,7 +161,33 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def out_format(format_str: str, row: list[str], row_index: int, result: list[list[str]]) -> str:
+def get_rows_in_clause(start_idx: int, gnt_data: list[list[str]]) -> list[list[str]]:
+    """Gets all rows which are in the same clause. This isn't done with list comprehension because this is much
+    more efficient."""
+    clause_this = get_row_val('LevinsohnClauseID', gnt_data[start_idx])
+
+    # Get all the part of the clause above.
+    last_idx_of_clause = -1
+    for i in range(start_idx + 1, len(gnt_data)):
+        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+            last_idx_of_clause = i - 1
+            break
+
+    # Get all the part of the clause below.
+    first_idx_of_clause = -1
+    for i in range(start_idx - 1, 0, -1):
+        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+            first_idx_of_clause = i + 1
+            break
+
+    # Join the two.
+    if -1 == first_idx_of_clause or -1 == last_idx_of_clause:
+        raise ValueError('Something went wrong.')
+    else:
+        return gnt_data[first_idx_of_clause:last_idx_of_clause+1]
+
+
+def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, gnt_data: list[list[str]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
@@ -172,7 +198,15 @@ def out_format(format_str: str, row: list[str], row_index: int, result: list[lis
     result = result.replace('parsing', get_row_val('rmac', row))
 
     # The number of rows returned as a result.
-    result = result.replace('num_rows', str(len(result)))
+    result = result.replace('num_rows', str(num_rows))
+
+    # The containing clause string.
+    while 'clause' in result:
+        clause = get_rows_in_clause(row_index, gnt_data)
+        clause_str = ' '.join(
+            [get_row_val('OGNTa', row) for row in clause]
+        )
+        result = result.replace('clause', clause_str)
 
     return result
 
@@ -186,7 +220,7 @@ def perform_query(query: str, gnt_data: list) -> str:
         out_command = query[out_idx + len('-out'):]
         query = query[:out_idx]
     else:
-        out_command = 'book chapter:verse'
+        out_command = 'book chapter.verse: ...clause...'
 
     # Tokenize the input.
     tokens = query.split()
@@ -211,7 +245,7 @@ def perform_query(query: str, gnt_data: list) -> str:
         query_result = [(row, idx) for row, idx in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
 
     # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result[0], result[1], query_result) for result in query_result]
+    result_list = [out_format(out_command, result[0], result[1], len(query_result), gnt_data) for result in query_result]
     result = '\n'.join(result_list)
 
     return result
