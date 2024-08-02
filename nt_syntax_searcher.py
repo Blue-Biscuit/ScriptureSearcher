@@ -69,6 +69,28 @@ def interpret_rmac_code(code: str) -> list[str]:
         'N': 'neuter'
     }
 
+    tense_map = {
+        'P': 'present',
+        'I': 'imperfect',
+        'F': 'future',
+        'A': 'aorist',
+        '2Α': 'aorist',  # I think this is for "second aorist"
+        'R': 'perfect',
+        'L': 'pluperfect'  # I have about 70% confidence that this is correct
+    }
+
+    voice_map = {
+        'A': 'active',
+        'D': 'middle',  # Don't know why it's a D, but I'm convinced of this looking at the data.
+        'P': 'passive'
+    }
+
+    mood_map = {
+        'I': 'indicative',
+        'P': 'participle',
+        'N': 'infinitive'
+    }
+
     # If it is indicated that this word is a noun or an adjective, then we expect case.
     if 'N' == code[0] or 'A' == code[0]:
         case_code = code[2]
