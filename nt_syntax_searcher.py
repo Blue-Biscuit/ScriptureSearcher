@@ -10,8 +10,6 @@ import sys
 OPEN_GNT_FILEPATH = "opengnt.json"
 
 
-
-
 def interpret_book_code(code: int):
     book_list = [
         'Matthew',
@@ -209,53 +207,6 @@ def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, g
         result = result.replace('clause', clause_str)
 
     return result
-
-
-def perform_query(query: str, gnt_data: list) -> str:
-    """Performs a query, and returns back a table of output."""
-    # If the out clause was provided, remove it and save it off -- the user can put anything in here, so we don't want
-    # the tokens from that messing with anything else.
-    if '-out' in query:
-        out_idx = query.index('-out')
-        out_command = query[out_idx + len('-out'):]
-        query = query[:out_idx]
-    else:
-        out_command = 'book chapter.verse: ...clause...'
-
-    # Tokenize the input.
-    tokens = query.split()
-
-    # Find the lexeme as the first token.
-    lexeme_search = tokens[0]
-
-    # Find all CSV rows which have this lexeme.
-    query_result = [(row, idx) for idx, row in enumerate(gnt_data)
-                    if strip_accents(get_row_val('lexeme', row)) == lexeme_search]
-
-    # Apply the case clause.
-    if '-case' in tokens:
-        case_token_idx = tokens.index('-case') + 1
-        if len(tokens) <= case_token_idx:
-            raise ValueError('Must provided argument to -case.')
-
-        case_token = tokens[case_token_idx]
-        if case_token not in ['nominative', 'genitive', 'accusative', 'dative']:
-            raise ValueError(f'Not a Greek case: {case_token}')
-
-        query_result = [(row, idx) for row, idx in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
-
-    # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result[0], result[1], len(query_result), gnt_data) for result in query_result]
-    result = '\n'.join(result_list)
-
-    return result
-
-
-def interpret_query(query: str) -> text_query.TextQuery:
-    """Interprets a query command, and bundles it into a query object."""
-    # Build a parser for the string.
-    parser = argparse.ArgumentParser()
-    parser.parse_args(query.split())
 
 
 def main_loop(gnt_file):
