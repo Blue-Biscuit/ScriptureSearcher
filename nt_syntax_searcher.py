@@ -227,6 +227,7 @@ def main_loop(gnt_file):
         required=False
     )
     args = parser.parse_args()
+    args.out = ' '.join(args.out)
 
     # Load the database.
     gnt_data = json.load(gnt_file)
