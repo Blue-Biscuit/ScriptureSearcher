@@ -1,15 +1,15 @@
 """A tool to make complex searches through the OpenGNT database,
 to help further biblical studies."""
-
-import csv
+import json
 import unicodedata
+import text_query
+import argparse
+import sys
 
 
-OPEN_GNT_FILEPATH = "OpenGNT_version3_3.csv"
+OPEN_GNT_FILEPATH = "opengnt.json"
 
 
-def strip_accents(s):
-    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 
 def interpret_book_code(code: int):
@@ -251,42 +251,34 @@ def perform_query(query: str, gnt_data: list) -> str:
     return result
 
 
+def interpret_query(query: str) -> text_query.TextQuery:
+    """Interprets a query command, and bundles it into a query object."""
+    # Build a parser for the string.
+    parser = argparse.ArgumentParser()
+    parser.parse_args(query.split())
+
+
 def main_loop(gnt_file):
-    """The main query loop."""
-    print('NT Syntax Searcher. By Andrew Huffman')
-    print('Version 7/31/2024')
-    print('Type "help" for usage notes.')
-    print()
+    """TThe main program."""
+    # Build the argument parser.
+    parser = argparse.ArgumentParser(
+        prog='NT Syntax Searcher',
+        description='Allows for complex searches through the OpenGNT text.')
+    parser.add_argument(
+        'term',
+        help='The specific search term for the type of search performed (default = lexeme)')
+    args = parser.parse_args()
 
-    # Load the file into a list, so that we can use list comprehension on it.
-    csv_reader = csv.reader(gnt_file, delimiter='\t')
-    gnt_data = [x for x in csv_reader]
+    # Load the database.
+    gnt_data = json.load(gnt_file)
 
-    # Loop until exit is given.
-    while True:
-        query = input('> ').strip()
+    # Build the query based upon the arguments.
+    query = text_query.LexemeQuery(args.term)
 
-        # Print help.
-        if query.startswith('help'):
-            print('To search for all occurrences of a lexeme, simply type:')
-            print('<lexeme>')
-            print('So, for example, to search for all occurrences of λογος, type:')
-            print('λογος')
-            print('The output is book, chapter, and verse numbers.')
-
-        # Exit.
-        elif query.startswith('exit'):
-            break
-
-        # Don't do anything if a blank line was given.
-        elif len(query) == 0:
-            pass
-
-        # Otherwise, this is interpreted as a query.
-        else:
-            query_result = perform_query(query, gnt_data)
-            print(query_result)
-            gnt_file.seek(0)
+    # Print the output.
+    output_data = query.search(gnt_data)
+    for row in output_data:
+        print(f'{row["Book"]} {row["Chapter"]}.{row["Verse"]}')
 
 
 def main():
