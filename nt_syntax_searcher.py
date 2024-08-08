@@ -222,7 +222,31 @@ def main_loop(gnt_file):
         '--out',
         help='Specifies how returned entries are displayed after the search finishes.',
         action='store',
-        default='book chapter.verse: clause',
+        default=['book chapter.verse: clause'],
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--case',
+        help='The grammatical case of the search term.',
+        action='store',
+        default=None,
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--number',
+        help='The grammatical number of the search term.',
+        action='store',
+        default=None,
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--gender',
+        help='The grammatical gender of the search term.',
+        action='store',
+        default=None,
         nargs=1,
         required=False
     )
@@ -234,6 +258,9 @@ def main_loop(gnt_file):
 
     # Build the query based upon the arguments.
     query = text_query.LexemeQuery(args.term)
+    query.case = ' '.join(args.case) if args.case is not None else None
+    query.number = ' '.join(args.number) if args.number is not None else None
+    query.gender = ' '.join(args.gender) if args.gender is not None else None
 
     # Print the output.
     output_data = query.search(gnt_data)
