@@ -159,22 +159,22 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def get_rows_in_clause(start_idx: int, gnt_data: list[list[str]]) -> list[list[str]]:
+def get_rows_in_clause(start_idx: int, gnt_data: list[dict[str, str]]) -> list[dict[str, str]]:
     """Gets all rows which are in the same clause. This isn't done with list comprehension because this is much
     more efficient."""
-    clause_this = get_row_val('LevinsohnClauseID', gnt_data[start_idx])
+    clause_this = gnt_data[start_idx]['LevinsohnClauseID']
 
     # Get all the part of the clause above.
     last_idx_of_clause = -1
     for i in range(start_idx + 1, len(gnt_data)):
-        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
             last_idx_of_clause = i - 1
             break
 
     # Get all the part of the clause below.
     first_idx_of_clause = -1
     for i in range(start_idx - 1, 0, -1):
-        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
             first_idx_of_clause = i + 1
             break
 
@@ -185,15 +185,15 @@ def get_rows_in_clause(start_idx: int, gnt_data: list[list[str]]) -> list[list[s
         return gnt_data[first_idx_of_clause:last_idx_of_clause+1]
 
 
-def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, gnt_data: list[list[str]]) -> str:
+def out_format(format_str: str, row: dict[str, str], row_index: int, num_rows: int, gnt_data: list[list[str]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
-    result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
-    result = result.replace('chapter', get_row_val('Chapter', row))
-    result = result.replace('verse', get_row_val('Verse', row))
+    result = format_str.replace('book', interpret_book_code(int(row['Book'])))
+    result = result.replace('chapter', row['Chapter'])
+    result = result.replace('verse', row['Verse'])
 
     # Parsing.
-    result = result.replace('parsing', get_row_val('rmac', row))
+    result = result.replace('parsing', row['rmac'])
 
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))
@@ -202,7 +202,7 @@ def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, g
     while 'clause' in result:
         clause = get_rows_in_clause(row_index, gnt_data)
         clause_str = ' '.join(
-            [get_row_val('OGNTa', row) for row in clause]
+            [row['OGNTa'] for row in clause]
         )
         result = result.replace('clause', clause_str)
 
@@ -218,6 +218,14 @@ def main_loop(gnt_file):
     parser.add_argument(
         'term',
         help='The specific search term for the type of search performed (default = lexeme)')
+    parser.add_argument(
+        '--out',
+        help='Specifies how returned entries are displayed after the search finishes.',
+        action='store',
+        default='book chapter.verse: clause',
+        nargs=1,
+        required=False
+    )
     args = parser.parse_args()
 
     # Load the database.
@@ -228,8 +236,8 @@ def main_loop(gnt_file):
 
     # Print the output.
     output_data = query.search(gnt_data)
-    for row in output_data:
-        print(f'{row["Book"]} {row["Chapter"]}.{row["Verse"]}')
+    for idx, row in output_data:
+        print(out_format(args.out, row, idx, len(output_data), gnt_data))
 
 
 def main():
