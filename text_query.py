@@ -40,3 +40,4 @@ class LexemeQuery(TextQuery):
                            if self.gender in helpers.interpret_rmac_code(helpers.get_row_val('rmac', row))]
 
         return lexeme_rows
+    
