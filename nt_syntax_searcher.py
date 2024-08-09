@@ -1,15 +1,13 @@
 """A tool to make complex searches through the OpenGNT database,
 to help further biblical studies."""
-
-import csv
+import json
 import unicodedata
+import text_query
+import argparse
+import sys
 
 
-OPEN_GNT_FILEPATH = "OpenGNT_version3_3.csv"
-
-
-def strip_accents(s):
-    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+OPEN_GNT_FILEPATH = "opengnt.json"
 
 
 def interpret_book_code(code: int):
@@ -161,22 +159,22 @@ def get_row_val(field: str, row: list[str]) -> str:
     return result
 
 
-def get_rows_in_clause(start_idx: int, gnt_data: list[list[str]]) -> list[list[str]]:
+def get_rows_in_clause(start_idx: int, gnt_data: list[dict[str, str]]) -> list[dict[str, str]]:
     """Gets all rows which are in the same clause. This isn't done with list comprehension because this is much
     more efficient."""
-    clause_this = get_row_val('LevinsohnClauseID', gnt_data[start_idx])
+    clause_this = gnt_data[start_idx]['LevinsohnClauseID']
 
     # Get all the part of the clause above.
     last_idx_of_clause = -1
     for i in range(start_idx + 1, len(gnt_data)):
-        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
             last_idx_of_clause = i - 1
             break
 
     # Get all the part of the clause below.
     first_idx_of_clause = -1
     for i in range(start_idx - 1, 0, -1):
-        if get_row_val('LevinsohnClauseID', gnt_data[i]) != clause_this:
+        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
             first_idx_of_clause = i + 1
             break
 
@@ -187,15 +185,15 @@ def get_rows_in_clause(start_idx: int, gnt_data: list[list[str]]) -> list[list[s
         return gnt_data[first_idx_of_clause:last_idx_of_clause+1]
 
 
-def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, gnt_data: list[list[str]]) -> str:
+def out_format(format_str: str, row: dict[str, str], row_index: int, num_rows: int, gnt_data: list[list[str]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
-    result = format_str.replace('book', interpret_book_code(int(get_row_val('Book', row))))
-    result = result.replace('chapter', get_row_val('Chapter', row))
-    result = result.replace('verse', get_row_val('Verse', row))
+    result = format_str.replace('book', interpret_book_code(int(row['Book'])))
+    result = result.replace('chapter', row['Chapter'])
+    result = result.replace('verse', row['Verse'])
 
     # Parsing.
-    result = result.replace('parsing', get_row_val('rmac', row))
+    result = result.replace('parsing', row['rmac'])
 
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))
@@ -204,89 +202,70 @@ def out_format(format_str: str, row: list[str], row_index: int, num_rows: int, g
     while 'clause' in result:
         clause = get_rows_in_clause(row_index, gnt_data)
         clause_str = ' '.join(
-            [get_row_val('OGNTa', row) for row in clause]
+            [row['OGNTa'] for row in clause]
         )
         result = result.replace('clause', clause_str)
 
     return result
 
 
-def perform_query(query: str, gnt_data: list) -> str:
-    """Performs a query, and returns back a table of output."""
-    # If the out clause was provided, remove it and save it off -- the user can put anything in here, so we don't want
-    # the tokens from that messing with anything else.
-    if '-out' in query:
-        out_idx = query.index('-out')
-        out_command = query[out_idx + len('-out'):]
-        query = query[:out_idx]
-    else:
-        out_command = 'book chapter.verse: ...clause...'
-
-    # Tokenize the input.
-    tokens = query.split()
-
-    # Find the lexeme as the first token.
-    lexeme_search = tokens[0]
-
-    # Find all CSV rows which have this lexeme.
-    query_result = [(row, idx) for idx, row in enumerate(gnt_data)
-                    if strip_accents(get_row_val('lexeme', row)) == lexeme_search]
-
-    # Apply the case clause.
-    if '-case' in tokens:
-        case_token_idx = tokens.index('-case') + 1
-        if len(tokens) <= case_token_idx:
-            raise ValueError('Must provided argument to -case.')
-
-        case_token = tokens[case_token_idx]
-        if case_token not in ['nominative', 'genitive', 'accusative', 'dative']:
-            raise ValueError(f'Not a Greek case: {case_token}')
-
-        query_result = [(row, idx) for row, idx in query_result if case_token in interpret_rmac_code(get_row_val('rmac', row))]
-
-    # Format the output according to the given -out parameter.
-    result_list = [out_format(out_command, result[0], result[1], len(query_result), gnt_data) for result in query_result]
-    result = '\n'.join(result_list)
-
-    return result
-
-
 def main_loop(gnt_file):
-    """The main query loop."""
-    print('NT Syntax Searcher. By Andrew Huffman')
-    print('Version 7/31/2024')
-    print('Type "help" for usage notes.')
-    print()
+    """TThe main program."""
+    # Build the argument parser.
+    parser = argparse.ArgumentParser(
+        prog='NT Syntax Searcher',
+        description='Allows for complex searches through the OpenGNT text.')
+    parser.add_argument(
+        'term',
+        help='The specific search term for the type of search performed (default = lexeme)')
+    parser.add_argument(
+        '--out',
+        help='Specifies how returned entries are displayed after the search finishes.',
+        action='store',
+        default=['book chapter.verse: clause'],
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--case',
+        help='The grammatical case of the search term.',
+        action='store',
+        default=None,
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--number',
+        help='The grammatical number of the search term.',
+        action='store',
+        default=None,
+        nargs=1,
+        required=False
+    )
+    parser.add_argument(
+        '--gender',
+        help='The grammatical gender of the search term.',
+        action='store',
+        default=None,
+        nargs=1,
+        required=False
+    )
+    args = parser.parse_args()
+    args.out = ' '.join(args.out)
 
-    # Load the file into a list, so that we can use list comprehension on it.
-    csv_reader = csv.reader(gnt_file, delimiter='\t')
-    gnt_data = [x for x in csv_reader]
+    # Load the database.
+    gnt_data = json.load(gnt_file)
 
-    # Loop until exit is given.
-    while True:
-        query = input('> ').strip()
+    # Build the query based upon the arguments.
+    query = text_query.LexemeQuery(args.term)
+    query.case = ' '.join(args.case) if args.case is not None else None
+    query.number = ' '.join(args.number) if args.number is not None else None
+    query.gender = ' '.join(args.gender) if args.gender is not None else None
 
-        # Print help.
-        if query.startswith('help'):
-            print('To search for all occurrences of a lexeme, simply type:')
-            print('<lexeme>')
-            print('So, for example, to search for all occurrences of λογος, type:')
-            print('λογος')
-            print('The output is book, chapter, and verse numbers.')
-
-        # Exit.
-        elif query.startswith('exit'):
-            break
-
-        # Don't do anything if a blank line was given.
-        elif len(query) == 0:
-            pass
-
-        # Otherwise, this is interpreted as a query.
-        else:
-            query_result = perform_query(query, gnt_data)
-            print(query_result)
-            gnt_file.seek(0)
+    # Print the output.
+    output_data = query.search(gnt_data)
+    for idx, row in output_data:
+        print(out_format(args.out, row, idx, len(output_data), gnt_data))
 
 
 def main():
