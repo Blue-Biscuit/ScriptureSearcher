@@ -19,10 +19,13 @@ class AndQuery(TextQuery):
         self.lhs = lhs
         self.rhs = rhs
 
+    def __str__(self):
+        return f'<{str(self.lhs)} & {str(self.rhs)}>'
+
     def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
         """Finds the intersection of the two queries."""
         lhs_result = self.lhs.search(dataset)
-        rhs_result = self.rhs.search(dataset) #TODO: Find a way to do this without two whole searches.
+        rhs_result = self.rhs.search(dataset)  # TODO: Find a way to do this without two whole searches.
 
         result = [x for x in lhs_result if x in rhs_result]
         return result
@@ -34,6 +37,9 @@ class OrQuery(TextQuery):
     def __init__(self, lhs: TextQuery, rhs: TextQuery):
         self.lhs = lhs
         self.rhs = rhs
+
+    def __str__(self):
+        return f"<{self.lhs} | {self.rhs}>"
 
     def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
         """Finds the union between the two search results."""
@@ -52,6 +58,9 @@ class LexemeQuery(TextQuery):
         self.case = None
         self.number = None
         self.gender = None
+
+    def __str__(self):
+        return f'<{self.lexeme}>'  # TODO: make better
 
     def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
         """Searches for the given lexeme."""
