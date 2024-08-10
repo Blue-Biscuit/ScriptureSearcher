@@ -5,6 +5,7 @@ import unicodedata
 import text_query
 import argparse
 import sys
+import query_string_parsing
 
 
 OPEN_GNT_FILEPATH = "opengnt.json"
@@ -210,62 +211,20 @@ def out_format(format_str: str, row: dict[str, str], row_index: int, num_rows: i
 
 
 def main_loop(gnt_file):
-    """TThe main program."""
-    # Build the argument parser.
-    parser = argparse.ArgumentParser(
-        prog='NT Syntax Searcher',
-        description='Allows for complex searches through the OpenGNT text.')
-    parser.add_argument(
-        'term',
-        help='The specific search term for the type of search performed (default = lexeme)')
-    parser.add_argument(
-        '--out',
-        help='Specifies how returned entries are displayed after the search finishes.',
-        action='store',
-        default=['book chapter.verse: clause'],
-        nargs=1,
-        required=False
-    )
-    parser.add_argument(
-        '--case',
-        help='The grammatical case of the search term.',
-        action='store',
-        default=None,
-        nargs=1,
-        required=False
-    )
-    parser.add_argument(
-        '--number',
-        help='The grammatical number of the search term.',
-        action='store',
-        default=None,
-        nargs=1,
-        required=False
-    )
-    parser.add_argument(
-        '--gender',
-        help='The grammatical gender of the search term.',
-        action='store',
-        default=None,
-        nargs=1,
-        required=False
-    )
-    args = parser.parse_args()
-    args.out = ' '.join(args.out)
+    """The main program."""
+    # Call parser on given arguments.
+    if len(sys.argv) == 1:
+        return
+    args = ' '.join(sys.argv[1:])
+    query = query_string_parsing.to_query(args)
 
-    # Load the database.
+    # Load the GNT database.
     gnt_data = json.load(gnt_file)
-
-    # Build the query based upon the arguments.
-    query = text_query.LexemeQuery(args.term)
-    query.case = ' '.join(args.case) if args.case is not None else None
-    query.number = ' '.join(args.number) if args.number is not None else None
-    query.gender = ' '.join(args.gender) if args.gender is not None else None
 
     # Print the output.
     output_data = query.search(gnt_data)
     for idx, row in output_data:
-        print(out_format(args.out, row, idx, len(output_data), gnt_data))
+        print(out_format('book chapter.verse: clause', row, idx, len(output_data), gnt_data))
 
 
 def main():
