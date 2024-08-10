@@ -62,7 +62,7 @@ def _tokenize_command_str(command: str) -> list[str]:
     return tokens
 
 
-def cmd_to_query(cmd: str) -> text_query.TextQuery:
+def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     """Converts a command into a text query."""
     cmd_tokens = cmd.split()
     if 0 == len(cmd_tokens):
@@ -110,7 +110,7 @@ def _argument_to_query(arg) -> text_query.TextQuery:
     if issubclass(type(arg), text_query.TextQuery):
         return arg
     elif type(arg) is str and _is_cmd(arg):
-        return cmd_to_query(arg)
+        return _cmd_to_query(arg)
     elif type(arg) is list:
         return _tokens_list_to_query(arg)
     else:
@@ -122,7 +122,6 @@ def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
 
     # Get rid of the parentheses, for easier processing.
     no_parens_list = _replace_parens_with_sublists(tokens)
-    print(f'no parens: {no_parens_list}')
 
     # Recursively call this function on the arguments of ANDs
     and_occurrences = [i for i, x in enumerate(no_parens_list) if '&' == x]
