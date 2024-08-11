@@ -2,25 +2,26 @@
 
 import text_query
 import enum
-import re
 
 
-class FSMState(enum.Enum):
+class TokenizerFSMState(enum.Enum):
     PARSING_COMMAND = 0,
-    PARSING_ELSE = 1
+    PARSING_ELSE = 1,
+    PARSING_AND = 2,
+    PARSING_OR = 3
 
 
 def _tokenize_command_str(command: str) -> list[str]:
     tokens = []
     paren_depth = 0
-    state = FSMState.PARSING_ELSE
+    state = TokenizerFSMState.PARSING_ELSE
 
     command_str = ''
 
     # Parse the command with a finite-state machine.
     idx = 0
     while idx < len(command):
-        if state == FSMState.PARSING_ELSE:
+        if state == TokenizerFSMState.PARSING_ELSE:
             char = command[idx]
 
             if char == '&' or char == '|':
@@ -42,17 +43,45 @@ def _tokenize_command_str(command: str) -> list[str]:
                 idx = idx + 1
 
             else:  # Otherwise, this is a command.
-                state = FSMState.PARSING_COMMAND
+                state = TokenizerFSMState.PARSING_COMMAND
 
-        elif FSMState.PARSING_COMMAND == state:
+        elif TokenizerFSMState.PARSING_COMMAND == state:
             char = command[idx]
-            if char in '&|()':  # If found a special character, return to that parsing state.
-                state = FSMState.PARSING_ELSE
+            if char in '()':  # If found a special character, return to that parsing state.
+                state = TokenizerFSMState.PARSING_ELSE
                 tokens.append(command_str.strip())
                 command_str = ''
             else:
                 command_str = f'{command_str}{char}'
                 idx = idx + 1
+
+                # If the last word of input has been an AND or an OR, then this is no longer / has never been a command,
+                # but is an AND or an OR.
+                stripped = command_str.strip()
+                split = command_str.split()
+                if stripped == 'and':
+                    tokens.append('&')
+                    command_str = ''
+                    state = TokenizerFSMState.PARSING_ELSE
+                    idx = idx + 1
+                elif stripped == 'or':
+                    tokens.append('|')
+                    command_str = ''
+                    state = TokenizerFSMState.PARSING_ELSE
+                    idx = idx + 1
+                elif split[-1] == 'and':
+                    tokens.append(' '.join(split[0:len(split)-1]))
+                    command_str = ''
+                    tokens.append('&')
+                    state = TokenizerFSMState.PARSING_ELSE
+                    idx = idx + 1
+                elif split[-1] == 'or':
+                    tokens.append(' '.join(split[0:len(split)-1]))
+                    command_str = ''
+                    tokens.append('|')
+                    state = TokenizerFSMState.PARSING_ELSE
+                    idx = idx + 1
+
 
     if paren_depth != 0:
         raise ValueError('Invalid parentheses in string.')
@@ -147,7 +176,7 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
 
 
 def _is_cmd(token: str) -> bool:
-    return token not in ['&|']
+    return token not in ['&', '|']
 
 
 def _replace_parens_with_sublists(tokens: list[str]) -> list:
