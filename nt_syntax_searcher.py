@@ -1,3 +1,4 @@
+#!/bin/python3
 """A tool to make complex searches through the OpenGNT database,
 to help further biblical studies."""
 import json
@@ -212,9 +213,20 @@ def out_format(format_str: str, row: dict[str, str], row_index: int, num_rows: i
 
 def main_loop(gnt_file):
     """The main program."""
-    # Call parser on given arguments.
     if len(sys.argv) == 1:
         return
+
+    # If '--out' has been given as an argument, take it and everything after as the string to be given to format
+    # output.
+    out_format_str = 'book chapter.verse: clause'
+    if '--out' in sys.argv:
+        out_idx = sys.argv.index('--out')
+        if out_idx == len(sys.argv) - 1:
+            out_format_str = ''
+        else:
+            out_format_str = ' '.join(sys.argv[out_idx + 1:])
+            del sys.argv[out_idx + 1:]
+
     args = ' '.join(sys.argv[1:])
     query = query_string_parsing.to_query(args)
 
@@ -224,7 +236,7 @@ def main_loop(gnt_file):
     # Print the output.
     output_data = query.search(gnt_data)
     for idx, row in output_data:
-        print(out_format('book chapter.verse: clause', row, idx, len(output_data), gnt_data))
+        print(out_format(out_format_str, row, idx, len(output_data), gnt_data))
 
 
 def main():
