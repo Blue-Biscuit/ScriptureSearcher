@@ -6,7 +6,7 @@ import enum
 
 class TokenizerFSMState(enum.Enum):
     PARSING_COMMAND = 0,
-    PARSING_ELSE = 1,
+    DEFAULT_STATE = 1,
     PARSING_AND = 2,
     PARSING_OR = 3
 
@@ -14,26 +14,21 @@ class TokenizerFSMState(enum.Enum):
 def _tokenize_command_str(command: str) -> list[str]:
     tokens = []
     paren_depth = 0
-    state = TokenizerFSMState.PARSING_ELSE
+    state = TokenizerFSMState.DEFAULT_STATE
 
     command_str = ''
 
     # Parse the command with a finite-state machine.
     idx = 0
     while idx < len(command):
-        if state == TokenizerFSMState.PARSING_ELSE:
+        if state == TokenizerFSMState.DEFAULT_STATE:
             char = command[idx]
 
-            if char == '&' or char == '|':
-                tokens.append(char)
-                idx = idx + 1
-
-            elif '(' == char:
+            if '(' == char or '[' == char:
                 tokens.append(f'({paren_depth}')
                 paren_depth = paren_depth + 1
                 idx = idx + 1
-
-            elif ')' == char:
+            elif ')' == char or ']' == char:
                 paren_depth = paren_depth - 1
                 if paren_depth < 0:
                     raise ValueError('Invalid parentheses in string.')
@@ -42,13 +37,13 @@ def _tokenize_command_str(command: str) -> list[str]:
             elif char.isspace():
                 idx = idx + 1
 
-            else:  # Otherwise, this is a command.
+            else:  # Otherwise, this is a command, or AND/OR.
                 state = TokenizerFSMState.PARSING_COMMAND
 
         elif TokenizerFSMState.PARSING_COMMAND == state:
             char = command[idx]
-            if char in '()':  # If found a special character, return to that parsing state.
-                state = TokenizerFSMState.PARSING_ELSE
+            if char in '()[]':  # If found a special character, return to that parsing state.
+                state = TokenizerFSMState.DEFAULT_STATE
                 tokens.append(command_str.strip())
                 command_str = ''
             else:
@@ -62,26 +57,25 @@ def _tokenize_command_str(command: str) -> list[str]:
                 if stripped == 'and':
                     tokens.append('&')
                     command_str = ''
-                    state = TokenizerFSMState.PARSING_ELSE
+                    state = TokenizerFSMState.DEFAULT_STATE
                     idx = idx + 1
                 elif stripped == 'or':
                     tokens.append('|')
                     command_str = ''
-                    state = TokenizerFSMState.PARSING_ELSE
+                    state = TokenizerFSMState.DEFAULT_STATE
                     idx = idx + 1
                 elif split[-1] == 'and':
                     tokens.append(' '.join(split[0:len(split)-1]))
                     command_str = ''
                     tokens.append('&')
-                    state = TokenizerFSMState.PARSING_ELSE
+                    state = TokenizerFSMState.DEFAULT_STATE
                     idx = idx + 1
                 elif split[-1] == 'or':
                     tokens.append(' '.join(split[0:len(split)-1]))
                     command_str = ''
                     tokens.append('|')
-                    state = TokenizerFSMState.PARSING_ELSE
+                    state = TokenizerFSMState.DEFAULT_STATE
                     idx = idx + 1
-
 
     if paren_depth != 0:
         raise ValueError('Invalid parentheses in string.')
