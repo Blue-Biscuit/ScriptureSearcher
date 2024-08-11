@@ -62,16 +62,88 @@ def _tokenize_command_str(command: str) -> list[str]:
     return tokens
 
 
+class CMDToQueryFSMState(enum.Enum):
+    DEFAULT_STATE = 0,
+    PARSING_CASE = 1,
+    PARSING_NUMBER = 2,
+    PARSING_GENDER = 3
+
+
 def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     """Converts a command into a text query."""
     cmd_tokens = cmd.split()
     if 0 == len(cmd_tokens):
         raise ValueError('Invalid empty command given.')
 
-    # TODO: Put an FSM in here for parsing the different lexeme search fields.
-
+    # The first token will always be the lexeme, so just remove it off-the-top.
     lexeme = cmd_tokens[0]
-    return text_query.LexemeQuery(lexeme)
+    cmd_tokens = cmd_tokens[1:]
+
+    # Declare the fields which may be written.
+    case = None
+    number = None
+    gender = None
+
+    state = CMDToQueryFSMState.DEFAULT_STATE
+    i = 0
+    while i < len(cmd_tokens):
+        token = cmd_tokens[i]
+        # Default case
+        if CMDToQueryFSMState.DEFAULT_STATE == state:
+            if '--case' == token:
+                state = CMDToQueryFSMState.PARSING_CASE
+                i = i + 1
+            elif '--number' == token:
+                state = CMDToQueryFSMState.PARSING_NUMBER
+                i = i + 1
+            elif '--gender' == token:
+                state = CMDToQueryFSMState.PARSING_GENDER
+                i = i + 1
+            else:  # Invalid token
+                raise ValueError(f'Syntax: invalid search token, "{token}"')
+        # Parsing case
+        elif CMDToQueryFSMState.PARSING_CASE == state:
+            if case is not None:
+                raise ValueError('Syntax: cannot define case twice')
+            if token not in ['nominative', 'genitive', 'dative', 'accusative']:
+                raise ValueError(f'Value: not a case, "{token}"')
+            case = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing number
+        elif CMDToQueryFSMState.PARSING_NUMBER == state:
+            if number is not None:
+                raise ValueError('Syntax: cannot define number twice')
+            if token not in ['singular', 'plural', 'dual']:
+                raise ValueError(f'Value: not a number, "{token}"')
+            number = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing gender
+        elif CMDToQueryFSMState.PARSING_GENDER == state:
+            if gender is not None:
+                raise ValueError('Syntax: cannot define gender twice')
+            if token not in ['masculine', 'feminine', 'neuter']:
+                raise ValueError(f'Value: not a gender, "{token}"')
+            gender = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+
+    # Error out if we ended in an invalid state.
+    if state == CMDToQueryFSMState.PARSING_CASE:
+        raise ValueError('Syntax: lacking argument to --case')
+    elif state == CMDToQueryFSMState.PARSING_NUMBER:
+        raise ValueError('Syntax: lacking argument to --number')
+    elif state == CMDToQueryFSMState.PARSING_GENDER:
+        raise ValueError('Syntax: lacking argument to --gender')
+
+    # Construct the final query.
+    query = text_query.LexemeQuery(lexeme)
+    query.case = case
+    query.number = number
+    query.gender = gender
+
+    return query
 
 
 def _is_cmd(token: str) -> bool:
