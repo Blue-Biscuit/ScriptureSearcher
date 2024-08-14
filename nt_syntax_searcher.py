@@ -74,7 +74,7 @@ def get_rows_in_clause(start_idx: int, gnt_data: list[dict[str, str]]) -> list[d
 
 
 def out_format(
-        format_str: str, row: dict[str, str], row_index: int, num_rows: int, gnt_data: list[dict[str, str]]) -> str:
+        format_str: str, row: dict[str, str | int], num_rows: int, gnt_data: list[dict[str, str | int]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', interpret_book_code(int(row['Book'])))
@@ -89,7 +89,7 @@ def out_format(
 
     # The containing clause string.
     while 'clause' in result:
-        clause = get_rows_in_clause(row_index, gnt_data)
+        clause = get_rows_in_clause(row['word_index'], gnt_data)
         clause_str = ' '.join(
             [row['OGNTa'] for row in clause]
         )
@@ -204,7 +204,7 @@ def main_loop(gnt_file):
     # Print the output.
     output_data = query.search(gnt_data)
     for row in output_data:
-        print(out_format(out_format_str, row, row['word_index'], len(output_data), gnt_data))
+        print(out_format(out_format_str, row, len(output_data), gnt_data))
 
 
 def main():
