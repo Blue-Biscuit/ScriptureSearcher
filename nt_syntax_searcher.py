@@ -203,8 +203,8 @@ def main_loop(gnt_file):
 
     # Print the output.
     output_data = query.search(gnt_data)
-    for idx, row in output_data:
-        print(out_format(out_format_str, row, idx, len(output_data), gnt_data))
+    for row in output_data:
+        print(out_format(out_format_str, row, row['word_index'], len(output_data), gnt_data))
 
 
 def main():
