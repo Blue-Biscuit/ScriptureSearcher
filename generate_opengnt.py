@@ -50,11 +50,15 @@ OPENGNT_FIELDS = [
     ]
 
 
-def convert_line(row: list[str]) -> dict:
+def convert_line(row: list[str], idx: int) -> dict:
     """Converts the line to a dictionary."""
     result = {}
     for field in OPENGNT_FIELDS:
         result[field] = helpers.get_row_val(field, row)
+
+    # Add the word index
+    result['word_index'] = idx
+
     return result
 
 
@@ -62,7 +66,7 @@ def process_file(file):
     """Processes the OpenGNT file."""
     # Do the conversion.
     reader = csv.reader(file, delimiter='\t')
-    gnt_data_json = [convert_line(x) for x in reader]
+    gnt_data_json = [convert_line(x, idx) for idx, x in enumerate(reader)]
 
     # Output to a file.
     with open(OUTPUT_FILE_NAME, 'w') as out_f:
