@@ -6,7 +6,7 @@ import helpers
 class TextQuery:
     """A superclass for different kinds of searches over the text of the NT.
     Should be extended with unique fields and a search() function."""
-    def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
+    def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
         """Searches through the given dataset with the fields set up in the class.
         Returns a tuple of row number in the given dataset as well as the actual data."""
         raise NotImplementedError('Call search() from a subclass!')
@@ -22,13 +22,12 @@ class AndQuery(TextQuery):
     def __str__(self):
         return f'<{str(self.lhs)} & {str(self.rhs)}>'
 
-    def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
+    def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
         """Finds the intersection of the two queries."""
         lhs_result = self.lhs.search(dataset)
-        rhs_result = self.rhs.search(dataset)  # TODO: Find a way to do this without two whole searches.
+        rhs_result = self.rhs.search(lhs_result)
 
-        result = [x for x in lhs_result if x in rhs_result]
-        return result
+        return rhs_result
 
 
 class OrQuery(TextQuery):
@@ -41,7 +40,7 @@ class OrQuery(TextQuery):
     def __str__(self):
         return f"<{self.lhs} | {self.rhs}>"
 
-    def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
+    def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
         """Finds the union between the two search results."""
         lhs_result = self.lhs.search(dataset)
         rhs_result = self.rhs.search(dataset)
@@ -62,24 +61,24 @@ class LexemeQuery(TextQuery):
     def __str__(self):
         return f'<{self.lexeme}>'  # TODO: make better
 
-    def search(self, dataset: list[dict[str, str]]) -> list[(int, list[dict[str, str]])]:
+    def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
         """Searches for the given lexeme."""
         # Create a sublist of rows with the given lexeme.
         lexeme_rows = [
-            (idx, row) for idx, row in enumerate(dataset) if helpers.strip_accents(row['lexeme']) == self.lexeme]
+            row for row in dataset if helpers.strip_accents(row['lexeme']) == self.lexeme]
 
         # Further limit based upon other fields if provided.
         if self.case is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.case in helpers.interpret_rmac_code(row[1]['rmac'])]
+                           if self.case in helpers.interpret_rmac_code(row['rmac'])]
         if self.number is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.number in helpers.interpret_rmac_code(row[1]['rmac'])]
+                           if self.number in helpers.interpret_rmac_code(row['rmac'])]
         if self.gender is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.gender in helpers.interpret_rmac_code(row[1]['rmac'])]
+                           if self.gender in helpers.interpret_rmac_code(row['rmac'])]
 
         return lexeme_rows
