@@ -8,6 +8,7 @@ OUT_FILE = 'lxx.json'
 PATH_TO_LEXEMES = 'LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
 PATH_TO_VERSIFICATION = 'LXX-Rahlfs-1935/08_versification/ossp/versification_original.csv'
 PATH_TO_MORPHOLOGY = 'LXX-Rahlfs-1935/03a_morphology_with_JTauber_patches/patched_623693.csv'
+PATH_TO_WORDLIST = 'LXX-Rahlfs-1935/01_wordlist_unicode/text_accented.csv'
 NUM_WORDS_IN_LXX = 623693
 
 
@@ -55,12 +56,23 @@ def load_morphology(lxx_data: list[dict], file):
         lxx_data[idx]['morph_code'] = row[1]
 
 
+def load_word(lxx_data: list[dict], file):
+    reader = csv.reader(file, delimiter='\t')
+    for idx, row in enumerate(reader):
+        lxx_data[idx]['word'] = row[1]
+
+
 def main():
     """The main routine."""
     # Initialize the dataset with just word indices. BEWARE! The actual dataset
     # is one-indexed. But we don't want the dataset used by the search app to be one-indexed.
     print('Initializing dataset...')
     lxx_data = [{'word_index': i} for i in range(NUM_WORDS_IN_LXX)]
+
+    # Load wordlist.
+    print('Loading word list...')
+    with open(PATH_TO_WORDLIST, 'r') as wordlist_file:
+        load_word(lxx_data, wordlist_file)
 
     # Load lexemes.
     print('Loading lexemes...')
