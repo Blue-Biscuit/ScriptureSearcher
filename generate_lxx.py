@@ -7,6 +7,7 @@ import json
 OUT_FILE = 'lxx.json'
 PATH_TO_LEXEMES = 'LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
 PATH_TO_VERSIFICATION = 'LXX-Rahlfs-1935/08_versification/ossp/versification_original.csv'
+PATH_TO_MORPHOLOGY = 'LXX-Rahlfs-1935/03a_morphology_with_JTauber_patches/patched_623693.csv'
 NUM_WORDS_IN_LXX = 623693
 
 
@@ -48,6 +49,12 @@ def load_versification(lxx_data: list[dict], file):
         word['Verse'] = current_versification[2]
 
 
+def load_morphology(lxx_data: list[dict], file):
+    reader = csv.reader(file, delimiter='\t')
+    for idx, row in enumerate(reader):
+        lxx_data[idx]['morph_code'] = row[1]
+
+
 def main():
     """The main routine."""
     # Initialize the dataset with just word indices. BEWARE! The actual dataset
@@ -65,9 +72,17 @@ def main():
     with open(PATH_TO_VERSIFICATION, 'r') as versification_file:
         load_versification(lxx_data, versification_file)
 
+    # Load morphology codes.
+    print('Loading morphology...')
+    with open(PATH_TO_MORPHOLOGY, 'r') as morph_file:
+        load_morphology(lxx_data, morph_file)
+
     # Dump to json.
+    print('Writing result...')
     with open(OUT_FILE, 'w') as f:
         json.dump(lxx_data, f)
+
+    print('Done!')
 
 
 if __name__ == '__main__':
