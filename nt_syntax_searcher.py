@@ -82,7 +82,7 @@ def out_format(
     result = result.replace('verse', row['Verse'])
 
     # Parsing.
-    result = result.replace('parsing', row['rmac'])
+    result = result.replace('parsing', row['morph_code'])
 
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))
@@ -91,7 +91,7 @@ def out_format(
     while 'clause' in result:
         clause = get_rows_in_clause(row['word_index'], gnt_data)
         clause_str = ' '.join(
-            [row['OGNTa'] for row in clause]
+            [row['word'] for row in clause]
         )
         result = result.replace('clause', clause_str)
 
