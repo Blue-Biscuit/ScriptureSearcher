@@ -179,7 +179,7 @@ def main_loop(gnt_file, lxx_file):
     for word in lxx_data:
         word['parent_set'] = lxx_data
 
-    search_data = gnt_data + lxx_data
+    search_data = lxx_data + gnt_data
 
     # Print the output.
     output_data = query.search(search_data)

@@ -59,7 +59,7 @@ def load_morphology(lxx_data: list[dict], file):
 def load_word(lxx_data: list[dict], file):
     reader = csv.reader(file, delimiter='\t')
     for idx, row in enumerate(reader):
-        lxx_data[idx]['word'] = row[1]
+        lxx_data[idx]['word'] = row[-1]
 
 
 def main():
