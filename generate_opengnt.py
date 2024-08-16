@@ -47,13 +47,28 @@ OPENGNT_FIELDS = [
         "Mrmac",
         "Msn",
         "MTBESG"
-    ]
+]
+
+GENERATION_FIELDS = [
+    "Book",
+    "Chapter",
+    "Verse",
+    "lexeme",
+    "rmac",
+    "LevinsohnClauseID",
+    "OGNTa"
+]
+
+# Test the generation fields, to make sure that it really is a subset of all OpenGNT fields.
+for _field in GENERATION_FIELDS:
+    if _field not in OPENGNT_FIELDS:
+        raise ValueError('GENERATION_FIELDS not a subset of OPENGNT_FIELDS.')
 
 
 def convert_line(row: list[str], idx: int) -> dict:
     """Converts the line to a dictionary."""
     result = {}
-    for field in OPENGNT_FIELDS:
+    for field in GENERATION_FIELDS:
         result[field] = helpers.get_row_val(field, row)
 
     # Add the word index
