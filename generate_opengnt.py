@@ -1,3 +1,4 @@
+#!/bin/python3
 """Takes the OpenGNT database and transforms it to an easily searchable JSON model."""
 
 import helpers
@@ -54,22 +55,28 @@ GENERATION_FIELDS = [
     "Chapter",
     "Verse",
     "lexeme",
-    "rmac",
+    ("rmac", "morph_code"),
     "LevinsohnClauseID",
-    "OGNTa"
+    ("OGNTa", "word")
 ]
 
 # Test the generation fields, to make sure that it really is a subset of all OpenGNT fields.
 for _field in GENERATION_FIELDS:
-    if _field not in OPENGNT_FIELDS:
-        raise ValueError('GENERATION_FIELDS not a subset of OPENGNT_FIELDS.')
+    if isinstance(_field, tuple):
+        if _field[0] not in OPENGNT_FIELDS:
+            raise ValueError(f'{_field[0]} not a field in the OpenGNT dataset.')
+    elif _field not in OPENGNT_FIELDS:
+        raise ValueError(f'{_field[0]} not a field in the OpenGNT dataset.')
 
 
 def convert_line(row: list[str], idx: int) -> dict:
     """Converts the line to a dictionary."""
     result = {}
     for field in GENERATION_FIELDS:
-        result[field] = helpers.get_row_val(field, row)
+        if isinstance(field, tuple):
+            result[field[1]] = helpers.get_row_val(field[0], row)
+        else:
+            result[field] = helpers.get_row_val(field, row)
 
     # Add the word index
     result['word_index'] = idx
