@@ -69,12 +69,51 @@ for _field in GENERATION_FIELDS:
         raise ValueError(f'{_field[0]} not a field in the OpenGNT dataset.')
 
 
+def interpret_book_code(code: int):
+    book_list = [
+        'Matthew',
+        'Mark',
+        'Luke',
+        'John',
+        'Acts',
+        'Romans',
+        '1 Corinthians',
+        '2 Corinthians',
+        'Galatians',
+        'Ephesians',
+        'Philippians',
+        'Colossians',
+        '1 Thessalonians',
+        '2 Thessalonians',
+        '1 Timothy',
+        '2 Timothy',
+        'Titus',
+        'Philemon',
+        'Hebrews',
+        'James',
+        '1 Peter',
+        '2 Peter',
+        '1 John',
+        '2 John',
+        '3 John',
+        'Jude',
+        'Revelation'
+    ]
+
+    book_index = code - 40
+    return book_list[book_index]
+
+
 def convert_line(row: list[str], idx: int) -> dict:
     """Converts the line to a dictionary."""
     result = {}
     for field in GENERATION_FIELDS:
         if isinstance(field, tuple):
             result[field[1]] = helpers.get_row_val(field[0], row)
+        elif field == 'Book':
+            # Transform the book into a string first.
+            book_number = int(helpers.get_row_val(field, row))
+            result[field] = interpret_book_code(book_number)
         else:
             result[field] = helpers.get_row_val(field, row)
 
@@ -88,6 +127,7 @@ def process_file(file):
     """Processes the OpenGNT file."""
     # Do the conversion.
     reader = csv.reader(file, delimiter='\t')
+    next(reader)  # Skip the first line (the table header)
     gnt_data_json = [convert_line(x, idx) for idx, x in enumerate(reader)]
 
     # Output to a file.

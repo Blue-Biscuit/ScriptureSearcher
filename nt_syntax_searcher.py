@@ -7,77 +7,54 @@ import query_string_parsing
 
 
 OPEN_GNT_FILEPATH = "opengnt.json"
+LXX_FILEPATH = 'lxx.json'
 APP_NAME = 'SyntaxSearcher'
 APP_VERSION = 'alpha'
 EXECUTABLE_NAME = 'nt_syntax_searcher.py'
 
 
-def interpret_book_code(code: int):
-    book_list = [
-        'Matthew',
-        'Mark',
-        'Luke',
-        'John',
-        'Acts',
-        'Romans',
-        '1 Corinthians',
-        '2 Corinthians',
-        'Galatians',
-        'Ephesians',
-        'Philippians',
-        'Colossians',
-        '1 Thessalonians',
-        '2 Thessalonians',
-        '1 Timothy',
-        '2 Timothy',
-        'Titus',
-        'Philemon',
-        'Hebrews',
-        'James',
-        '1 Peter',
-        '2 Peter',
-        '1 John',
-        '2 John',
-        '3 John',
-        'Jude',
-        'Revelation'
-    ]
+def get_window(word: dict, before: int, after: int) -> str:
+    """Gets a window of words from the original dataset."""
+    parent_set = word['parent_set']
+    book = word['Book']
 
-    book_index = code - 40
-    return book_list[book_index]
+    # If these flags are high, that means we hit the beginning / end of a book.
+    early_before = False
+    early_after = False
 
+    # Get relevant indices.
+    center_idx = word['word_index']
+    left_idx = center_idx - before
+    right_idx = center_idx + after
 
-def get_rows_in_clause(start_idx: int, gnt_data: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Gets all rows which are in the same clause. This isn't done with list comprehension because this is much
-    more efficient."""
-    clause_this = gnt_data[start_idx]['LevinsohnClauseID']
+    # Handle the possibility that we went off the edge of the dataset.
+    if left_idx < 0:
+        early_before = True
+        left_idx = 0
+    if right_idx >= len(parent_set):
+        early_after = True
+        right_idx = len(parent_set) - 1
 
-    # Get all the part of the clause above.
-    last_idx_of_clause = -1
-    for i in range(start_idx + 1, len(gnt_data)):
-        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
-            last_idx_of_clause = i - 1
-            break
+    # Handle the possibility that we leave the current book.
+    while parent_set[left_idx]['Book'] != book:
+        early_before = True
+        left_idx = left_idx + 1
+    while parent_set[right_idx]['Book'] != book:
+        early_after = True
+        right_idx = right_idx - 1
 
-    # Get all the part of the clause below.
-    first_idx_of_clause = -1
-    for i in range(start_idx - 1, 0, -1):
-        if gnt_data[i]['LevinsohnClauseID'] != clause_this:
-            first_idx_of_clause = i + 1
-            break
-
-    # Join the two.
-    if -1 == first_idx_of_clause or -1 == last_idx_of_clause:
-        raise ValueError('Something went wrong.')
-    else:
-        return gnt_data[first_idx_of_clause:last_idx_of_clause+1]
+    # Create the window.
+    window_words = parent_set[left_idx:right_idx+1]
+    text_list = [word['word'] for word in window_words]
+    text = f'{"" if early_before else "..."}{" ".join(text_list)}{"" if early_after else "..."}'
+    return text
 
 
 def out_format(
         format_str: str, row: dict[str, str | int], num_rows: int, gnt_data: list[dict[str, str | int]]) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
-    result = format_str.replace('book', interpret_book_code(int(row['Book'])))
+    result = format_str.replace('book', (row['Book']))
     result = result.replace('chapter', row['Chapter'])
     result = result.replace('verse', row['Verse'])
 
@@ -87,13 +64,8 @@ def out_format(
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))
 
-    # The containing clause string.
-    while 'clause' in result:
-        clause = get_rows_in_clause(row['word_index'], gnt_data)
-        clause_str = ' '.join(
-            [row['word'] for row in clause]
-        )
-        result = result.replace('clause', clause_str)
+    while 'window' in result:
+        result = result.replace('window', get_window(row, 5, 5))
 
     return result
 
@@ -170,7 +142,7 @@ def print_help(help_arg: str):
         print('\tverse\t\t\tThe verse the search term was found in.')
 
 
-def main_loop(gnt_file):
+def main_loop(gnt_file, lxx_file):
     """The main program."""
     if len(sys.argv) == 1:
         return
@@ -186,7 +158,7 @@ def main_loop(gnt_file):
 
     # If '--out' has been given as an argument, take it and everything after as the string to be given to format
     # output.
-    out_format_str = 'book chapter.verse: clause'
+    out_format_str = 'book chapter.verse: window'
     if '--out' in sys.argv:
         out_idx = sys.argv.index('--out')
         if out_idx == len(sys.argv) - 1:
@@ -198,11 +170,19 @@ def main_loop(gnt_file):
     args = ' '.join(sys.argv[1:])
     query = query_string_parsing.to_query(args)
 
-    # Load the GNT database.
+    # Load the relevant databases.
     gnt_data = json.load(gnt_file)
+    for word in gnt_data:
+        word['parent_set'] = gnt_data
+
+    lxx_data = json.load(lxx_file)
+    for word in lxx_data:
+        word['parent_set'] = lxx_data
+
+    search_data = gnt_data + lxx_data
 
     # Print the output.
-    output_data = query.search(gnt_data)
+    output_data = query.search(search_data)
     for row in output_data:
         print(out_format(out_format_str, row, len(output_data), gnt_data))
 
@@ -211,7 +191,8 @@ def main():
     """The main routine."""
     # Open the dataset and call
     with open(OPEN_GNT_FILEPATH, 'r') as gnt_file:
-        main_loop(gnt_file)
+        with open(LXX_FILEPATH, 'r') as lxx_file:
+            main_loop(gnt_file, lxx_file)
 
 
 if __name__ == '__main__':
