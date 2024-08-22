@@ -3,6 +3,7 @@
 
 import csv
 import json
+import re
 
 OUT_FILE = 'lxx.json'
 PATH_TO_LEXEMES = 'LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
@@ -62,6 +63,121 @@ def load_word(lxx_data: list[dict], file):
         lxx_data[idx]['word'] = row[-1]
 
 
+def interpret_morphology(lxx_data: list[dict]):
+    """Interprets the already loaded morphology codes in a way which agrees with the other Syntax Searcher datasets."""
+    for word in lxx_data:
+        morph_code = word['morph_code']
+        result = {}
+
+        case_map = {
+            'N': 'nominative',
+            'G': 'genitive',
+            'D': 'dative',
+            'A': 'accusative'
+        }
+        number_map = {
+            'S': 'singular',
+            'P': 'plural'
+        }
+        gender_map = {
+            'M': 'masculine',
+            'F': 'feminine',
+            'N': 'neuter'
+        }
+        tense_map = {
+            'P': 'present',
+            'I': 'imperfect',
+            'A': 'aorist',
+            'X': 'perfect',
+            'F': 'future'
+        }
+        voice_map = {
+            'A': 'active',
+            'M': 'middle',
+            'P': 'passive'
+        }
+        mood_map = {
+            'I': 'indicative',
+            'D': 'imperative',
+            'P': 'participle',
+            'N': 'infinitive',
+            'S': 'subjunctive',
+            'F': 'future'
+        }
+        person_map = {
+            '1': 'first',
+            '2': 'second',
+            '3': 'third'
+        }
+
+        if morph_code == 'P':  # Preposition
+            result['part_of_speech'] = 'preposition'
+        elif morph_code == 'C':  # Conjunction
+            result['part_of_speech'] = 'conjunction'
+        elif morph_code == 'X':  # Particle? TODO: verify.
+            result['part_of_speech'] = 'particle'
+        elif morph_code == 'D':  # Adverb
+            result['part_of_speech'] = 'adverb'
+        elif morph_code == 'M':  # A numeral. These are handled as adjectives in OpenGNT.
+            result['part_of_speech'] = 'adjective'
+        elif morph_code == 'I':  # Interjection
+            result['part_of_speech'] = 'interjection'
+        elif re.match('N\\.[NGDA][SP][MFN]', morph_code):  # Nouns
+            result['part_of_speech'] = 'noun'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+            result['gender'] = gender_map[morph_code[4]]
+        elif re.match('A\\.[NGDA][SP][MFN]', morph_code):  # Adjectives
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+            result['gender'] = gender_map[morph_code[4]]
+        elif re.match('V\\.[PFIAX][AMP][IDS][123][SP]', morph_code):  # Verbs
+            result['part_of_speech'] = 'verb'
+            result['tense'] = tense_map[morph_code[2]]
+            result['voice'] = voice_map[morph_code[3]]
+            result['mood'] = mood_map[morph_code[4]]
+            result['person'] = person_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+        elif re.match('V.[PFIAX][AMP]P[NGDA][SP][MFN]', morph_code):  # Participle
+            result['part_of_speech'] = 'verb'
+            result['tense'] = tense_map[morph_code[2]]
+            result['voice'] = voice_map[morph_code[3]]
+            result['mood'] = mood_map[morph_code[4]]
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+            result['gender'] = gender_map[morph_code[7]]
+        elif re.match('V\\.[PIA][AMP]N', morph_code):  # Infinitive
+            result['part_of_speech'] = 'verb'
+            result['tense'] = tense_map[morph_code[2]]
+            result['voice'] = voice_map[morph_code[3]]
+            result['mood'] = mood_map[morph_code[4]]
+        elif re.match('RA\\.[NGDA][SP][MFN]', morph_code):  # The article
+            result['part_of_speech'] = 'article'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+            result['gender'] = gender_map[morph_code[5]]
+        elif re.match('RR\\.[NGDA][SP][MFN]', morph_code):  # The relative pronoun
+            result['part_of_speech'] = 'pronoun'
+            result['extras'] = ['relative']
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+            result['gender'] = gender_map[morph_code[5]]
+        elif re.match('RD\\.[NGDA][SP][MFN]', morph_code):  # The third-person pronoun
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+            result['gender'] = gender_map[morph_code[5]]
+        elif re.match('RP.[NGDA][SP]', morph_code):  # The second-person pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+        else:
+            raise ValueError(f'Unknown morphology code: {morph_code}; word: {word["word"]}; idx: {word["word_index"]}')
+
+        word['morph_code'] = result
+
+
 def main():
     """The main routine."""
     # Initialize the dataset with just word indices. BEWARE! The actual dataset
@@ -88,6 +204,10 @@ def main():
     print('Loading morphology...')
     with open(PATH_TO_MORPHOLOGY, 'r') as morph_file:
         load_morphology(lxx_data, morph_file)
+
+    # Interpret morphology codes.
+    print('Interpreting morphology...')
+    interpret_morphology(lxx_data)
 
     # Dump to json.
     print('Writing result...')
