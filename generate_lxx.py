@@ -187,22 +187,22 @@ def main():
 
     # Load wordlist.
     print('Loading word list...')
-    with open(PATH_TO_WORDLIST, 'r') as wordlist_file:
+    with open(PATH_TO_WORDLIST, 'r', encoding='utf-8') as wordlist_file:
         load_word(lxx_data, wordlist_file)
 
     # Load lexemes.
     print('Loading lexemes...')
-    with open(PATH_TO_LEXEMES, 'r') as lexemes_file:
+    with open(PATH_TO_LEXEMES, 'r', encoding='utf-8') as lexemes_file:
         load_lexemes(lxx_data, lexemes_file)
 
     # Get references.
     print('Loading versification...')
-    with open(PATH_TO_VERSIFICATION, 'r') as versification_file:
+    with open(PATH_TO_VERSIFICATION, 'r', encoding='utf-8') as versification_file:
         load_versification(lxx_data, versification_file)
 
     # Load morphology codes.
     print('Loading morphology...')
-    with open(PATH_TO_MORPHOLOGY, 'r') as morph_file:
+    with open(PATH_TO_MORPHOLOGY, 'r', encoding='utf-8') as morph_file:
         load_morphology(lxx_data, morph_file)
 
     # Interpret morphology codes.
