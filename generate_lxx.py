@@ -73,11 +73,13 @@ def interpret_morphology(lxx_data: list[dict]):
             'N': 'nominative',
             'G': 'genitive',
             'D': 'dative',
-            'A': 'accusative'
+            'A': 'accusative',
+            'V': 'vocative'
         }
         number_map = {
             'S': 'singular',
-            'P': 'plural'
+            'P': 'plural',
+            'D': 'dual'
         }
         gender_map = {
             'M': 'masculine',
@@ -89,7 +91,8 @@ def interpret_morphology(lxx_data: list[dict]):
             'I': 'imperfect',
             'A': 'aorist',
             'X': 'perfect',
-            'F': 'future'
+            'F': 'future',
+            'Y': 'pluperfect'
         }
         voice_map = {
             'A': 'active',
@@ -102,7 +105,7 @@ def interpret_morphology(lxx_data: list[dict]):
             'P': 'participle',
             'N': 'infinitive',
             'S': 'subjunctive',
-            'F': 'future'
+            'O': 'optative'
         }
         person_map = {
             '1': 'first',
@@ -110,36 +113,133 @@ def interpret_morphology(lxx_data: list[dict]):
             '3': 'third'
         }
 
+        # Correct what appear to be typos in the dataset.
+        # TODO: look these up in the key and just a bare search to ensure I'm not missing something.
+        if 239870 == word['word_index']:
+            morph_code = 'V.API3S'
+        if 332804 == word['word_index']:
+            morph_code = 'A'
+        if 335067 == word['word_index']:
+            morph_code = 'A.N'
+        if 422765 == word['word_index']:
+            morph_code = 'V.APS2S'
+        if 422848 == word['word_index']:
+            morph_code = 'V.PMI3P'
+        if 433328 == word['word_index']:
+            morph_code = 'N.DSF'
+        if 473507 == word['word_index']:
+            morph_code = 'A.APN'
+        if 483471 == word['word_index']:
+            morph_code = 'A.NSM'
+
         if morph_code == 'P':  # Preposition
             result['part_of_speech'] = 'preposition'
+        elif morph_code == 'P+X':  # Preposition with a conjunction. Classifying as conjunction for now.
+            result['part_of_speech'] = 'conjunction'
         elif morph_code == 'C':  # Conjunction
             result['part_of_speech'] = 'conjunction'
-        elif morph_code == 'X':  # Particle? TODO: verify.
+        elif morph_code == 'X':  # Particle?
+            result['part_of_speech'] = 'particle'
+        elif morph_code == 'C+X':  # A particle with a conjunction.
             result['part_of_speech'] = 'particle'
         elif morph_code == 'D':  # Adverb
+            result['part_of_speech'] = 'adverb'
+        elif morph_code == 'D.P':  # Adverb. TODO: Identify what the 'P' is.
+            result['part_of_speech'] = 'adverb'
+        elif morph_code == 'C+D':  # Adverb + conjunction
             result['part_of_speech'] = 'adverb'
         elif morph_code == 'M':  # A numeral. These are handled as adjectives in OpenGNT.
             result['part_of_speech'] = 'adjective'
         elif morph_code == 'I':  # Interjection
             result['part_of_speech'] = 'interjection'
-        elif re.match('N\\.[NGDA][SP][MFN]', morph_code):  # Nouns
+        elif morph_code == 'N':  # Noun with unknown other things.
+            result['part_of_speech'] = 'noun'
+        elif morph_code == 'A':
+            result['part_of_speech'] = 'adjective'
+        elif morph_code == 'A.B':  # I think this is an adjective used adverbially, but unsure. TODO: investigate.
+            result['part_of_speech'] = 'adjective'
+        elif morph_code == 'RA+A':  # I don't know whether to characterize this as an adj or a pronoun. Going with adj.
+            result['part_of_speech'] = 'adjective'
+        elif morph_code == 'RI':  # Pronoun with nothing else.
+            result['part_of_speech'] = 'pronoun'
+        elif re.match('N\\.[NGDAV][SPD][MFN]', morph_code):  # Nouns
             result['part_of_speech'] = 'noun'
             result['case'] = case_map[morph_code[2]]
             result['number'] = number_map[morph_code[3]]
             result['gender'] = gender_map[morph_code[4]]
-        elif re.match('A\\.[NGDA][SP][MFN]', morph_code):  # Adjectives
+        elif re.match('RD\\+N\\.[NGDAV][SPD][MFN]', morph_code):  # Nouns + relative. I'm classifying this as a noun for now.
+            result['part_of_speech'] = 'noun'
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+            result['gender'] = gender_map[morph_code[7]]
+        elif re.match('M3M\\.[NGDAV][SPD][MFN]', morph_code):  # TODO: some kind of noun, other than that, not really sure. investigate.
+            result['part_of_speech'] = 'noun'
+            result['case'] = case_map[morph_code[4]]
+            result['number'] = number_map[morph_code[5]]
+            result['gender'] = gender_map[morph_code[6]]
+        elif re.match('N\\.[NGDAV][SPD]', morph_code):  # TODO: verify. Indeclinable noun.
+            result['part_of_speech'] = 'noun'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+        elif re.match('N\\.[SPD]', morph_code):  # Noun without a case; I don't know how this works. TODO: verify.
+            result['part_of_speech'] = 'noun'
+            result['number'] = number_map[morph_code[2]]
+        elif re.match('N\\.[NGDAV] [MFN]', morph_code):  # TODO: verify. I think this is a word of unknown number.
+            result['part_of_speech'] = 'noun'
+            result['gender'] = gender_map[morph_code[4]]
+        elif re.match('N\\.[NGDAV]', morph_code):  # TODO: verify.
+            result['part_of_speech'] = 'noun'
+            result['case'] = case_map[morph_code[2]]
+        elif re.match('A\\.[NGDAV][SPD][MFN]', morph_code):  # Adjectives
             result['part_of_speech'] = 'adjective'
             result['case'] = case_map[morph_code[2]]
             result['number'] = number_map[morph_code[3]]
             result['gender'] = gender_map[morph_code[4]]
-        elif re.match('V\\.[PFIAX][AMP][IDS][123][SP]', morph_code):  # Verbs
+        elif re.match('P\\+A\\.[NGDAV][SPD][MFN]', morph_code):  # Adjectives
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2+2]]
+            result['number'] = number_map[morph_code[3+2]]
+            result['gender'] = gender_map[morph_code[4+2]]
+        elif re.match('RA\\+A\\.[NGDAV][SPD][MFN]', morph_code):  # Adjectives
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+            result['gender'] = gender_map[morph_code[7]]
+        elif re.match('A\\.[NGDAV]', morph_code):  # Adjectives
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2]]
+        elif re.match('A\\.[SPD]', morph_code):  # Adjectives
+            result['part_of_speech'] = 'adjective'
+            result['number'] = number_map[morph_code[2]]
+        elif re.match('A[1-9]', morph_code):  # Not really sure at all what the number is for. TODO: investigate.
+            result['part_of_speech'] = 'adjective'
+        elif re.match('M\\.[NGDAV][SPD][MFN]', morph_code):  # Numeric Adjective
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+            result['gender'] = gender_map[morph_code[4]]
+        elif re.match('M\\.[NGDAV][SPD][MFN]', morph_code):  # Numeric Adjective
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+            result['gender'] = gender_map[morph_code[4]]
+        elif re.match('M\\.[NGDAV][SPD]', morph_code):  # TODO: verify. I think this is a numeric adjective.
+            result['part_of_speech'] = 'adjective'
+            result['case'] = case_map[morph_code[2]]
+            result['number'] = number_map[morph_code[3]]
+        elif re.match('V\\.[PFIAXY][AMP][IDSO][123][SPD]', morph_code):  # Verbs
             result['part_of_speech'] = 'verb'
             result['tense'] = tense_map[morph_code[2]]
             result['voice'] = voice_map[morph_code[3]]
             result['mood'] = mood_map[morph_code[4]]
             result['person'] = person_map[morph_code[5]]
             result['number'] = number_map[morph_code[6]]
-        elif re.match('V.[PFIAX][AMP]P[NGDA][SP][MFN]', morph_code):  # Participle
+        elif re.match('V\\.[PFIAXY][AMP][IDSO]', morph_code):  # Verbs
+            result['part_of_speech'] = 'verb'
+            result['tense'] = tense_map[morph_code[2]]
+            result['voice'] = voice_map[morph_code[3]]
+            result['mood'] = mood_map[morph_code[4]]
+        elif re.match('V.[PFIAXY][AMP]P[NGDAV][SPD][MFN]', morph_code):  # Participle
             result['part_of_speech'] = 'verb'
             result['tense'] = tense_map[morph_code[2]]
             result['voice'] = voice_map[morph_code[3]]
@@ -147,33 +247,73 @@ def interpret_morphology(lxx_data: list[dict]):
             result['case'] = case_map[morph_code[5]]
             result['number'] = number_map[morph_code[6]]
             result['gender'] = gender_map[morph_code[7]]
-        elif re.match('V\\.[PIA][AMP]N', morph_code):  # Infinitive
+        elif re.match('V.[PFIAXY][AMP]P', morph_code):  # Participle
             result['part_of_speech'] = 'verb'
             result['tense'] = tense_map[morph_code[2]]
             result['voice'] = voice_map[morph_code[3]]
             result['mood'] = mood_map[morph_code[4]]
-        elif re.match('RA\\.[NGDA][SP][MFN]', morph_code):  # The article
+        elif re.match('V\\.[PFIAXY][AMP]N', morph_code):  # Infinitive
+            result['part_of_speech'] = 'verb'
+            result['tense'] = tense_map[morph_code[2]]
+            result['voice'] = voice_map[morph_code[3]]
+            result['mood'] = mood_map[morph_code[4]]
+        elif re.match('RA\\.[NGDAV][SPD][MFN]', morph_code):  # The article
             result['part_of_speech'] = 'article'
             result['case'] = case_map[morph_code[3]]
             result['number'] = number_map[morph_code[4]]
             result['gender'] = gender_map[morph_code[5]]
-        elif re.match('RR\\.[NGDA][SP][MFN]', morph_code):  # The relative pronoun
+        elif re.match('RR\\.[NGDAV][SPD][MFN]', morph_code):  # The relative pronoun
             result['part_of_speech'] = 'pronoun'
             result['extras'] = ['relative']
             result['case'] = case_map[morph_code[3]]
             result['number'] = number_map[morph_code[4]]
             result['gender'] = gender_map[morph_code[5]]
-        elif re.match('RD\\.[NGDA][SP][MFN]', morph_code):  # The third-person pronoun
+        elif re.match('RA\\.[NGDAV][SPD]', morph_code):  # The relative pronoun
+            result['part_of_speech'] = 'pronoun'
+            result['extras'] = ['relative']
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+        elif re.match('RD\\.[NGDAV][SPD][MFN]', morph_code):  # The third-person pronoun
             result['part_of_speech'] = 'pronoun'
             result['case'] = case_map[morph_code[3]]
             result['number'] = number_map[morph_code[4]]
             result['gender'] = gender_map[morph_code[5]]
-        elif re.match('RP.[NGDA][SP]', morph_code):  # The second-person pronoun.
+        elif re.match('C\\+RD\\.[NGDAV][SPD][MFN]', morph_code):  # The third-person pronoun, plus conj.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+            result['gender'] = gender_map[morph_code[7]]
+        elif re.match('RD\\.[NGDAV][SPD]', morph_code):  # The third-person pronoun
             result['part_of_speech'] = 'pronoun'
             result['case'] = case_map[morph_code[3]]
             result['number'] = number_map[morph_code[4]]
+        elif re.match('RP.[NGDAV][SPD]', morph_code):  # The second-person pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+        elif re.match('RI\\.[NGDAV][SPD][MFN]', morph_code):  # The interrogative pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+            result['gender'] = gender_map[morph_code[5]]
+        elif re.match('RI\\.[NGDAV]', morph_code):  # The interrogative pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+        elif re.match('RX\\.[NGDAV][SPD][MFN]', morph_code):  # The pronoun TODO: figure out what kind
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[3]]
+            result['number'] = number_map[morph_code[4]]
+            result['gender'] = gender_map[morph_code[5]]
+        elif re.match('C\\+RP\\.[NGDAV][SPD]', morph_code):  # conj + a relative pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
+        elif re.match('RP\\+X\\.[NGDAV][SPD]', morph_code):  # particle + a relative pronoun.
+            result['part_of_speech'] = 'pronoun'
+            result['case'] = case_map[morph_code[5]]
+            result['number'] = number_map[morph_code[6]]
         else:
-            raise ValueError(f'Unknown morphology code: {morph_code}; word: {word["word"]}; idx: {word["word_index"]}')
+            raise ValueError(f'Unknown morphology code: {morph_code}; word: {word["word"]}; idx: {word["word_index"]}/{len(lxx_data)}')
 
         word['morph_code'] = result
 
