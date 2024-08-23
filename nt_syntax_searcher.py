@@ -59,7 +59,7 @@ def out_format(
     result = result.replace('verse', row['Verse'])
 
     # Parsing.
-    result = result.replace('parsing', row['morph_code'])
+    # result = result.replace('parsing', row['morph_code'])
 
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))

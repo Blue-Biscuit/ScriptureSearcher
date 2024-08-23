@@ -386,13 +386,13 @@ def process_file(file):
     gnt_data_json = [convert_line(x, idx) for idx, x in enumerate(reader)]
 
     # Output to a file.
-    with open(OUTPUT_FILE_NAME, 'w') as out_f:
+    with open(OUTPUT_FILE_NAME, 'w', encoding='utf-8') as out_f:
         json.dump(gnt_data_json, out_f)
 
 
 def main():
     """The main routine."""
-    with open(INPUT_FILE_NAME, 'r') as f:
+    with open(INPUT_FILE_NAME, 'r', encoding='utf-8') as f:
         process_file(f)
 
 
