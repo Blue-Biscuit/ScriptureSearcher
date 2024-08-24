@@ -95,17 +95,17 @@ def out_format(
     return result
 
 
-def print_help(help_arg: str):
+def print_help(help_arg: list[str]):
     """Prints help. Takes in argv """
     # If no argument was provided, just print general help.
-    if '' == help_arg:
+    if not help_arg:
         print(f'USAGE: {EXECUTABLE_NAME} [ARGS] SEARCH [--out OUT]')
         print("\tPerforms complex searches through the Greek New Testament's and the Septuagint's text.")
         print()
         print('ARGS:')
         print('\t-h | --help H\t\t\tPrints this help and exits. Prints help about a specific part of the program')
         print('\t\t\t\t\tgiven an argument. "-h help" prints possible arguments.')
-    elif 'help' == help_arg:
+    elif 'help' == help_arg[0]:
         print(f'USAGE: {EXECUTABLE_NAME} -h H')
         print('\tPrints help about a specific aspect of the program.')
         print()
@@ -114,41 +114,48 @@ def print_help(help_arg: str):
         print('\thelp\t\t\tPrints help for the help command.')
         print('\tsearch\t\t\tPrints help for searching.')
         print('\tout\t\t\tPrints help for output.')
-    elif 'search' == help_arg:
-        print(f'USAGE: {EXECUTABLE_NAME} SEARCH_TERM [ARGS]')
-        print("\tSpecifies the specific search on the New Testament and Septuagint's text.")
-        print()
-        print('\tThe simplest search would be a simple search for all occurrences of a lexeme, as so:')
-        print('\t\tλογος')
-        print()
-        print('\tThis will search through the entire text of the New Testament for the word "λογος," and return the')
-        print('\tlist of passages, with the specific clause in which the term appears. If you wanted, you could also')
-        print('\tspecify that you only want to see occurrences of λογος in the genitive case: ')
-        print('\t\tλογος --case genitive')
-        print()
-        print('\tSearches can be strung together with "and"s and "or"s; so if I wanted occurrences of λογος in the')
-        print('\tdative singular or the genitive plural, I could do this:')
-        print('\t\tλογος --case dative and λογος --number singular or λογος --case genitive and λογος --number plural')
-        print()
-        print('\tThe order of operations, normally, is "and"s first and then "or"s. To override, this precedence, use')
-        print('\tbraces for the things you want to be done first; this finds all occurrences of λογος in the')
-        print('\tgenitive singular or the dative singular:')
-        print('\t\t[λογος --case genitive or λογος --case dative] and λογος --number singular')
-        print()
-        print('\tThese arguments are positional, so the lexeme should always come first.')
-        print()
-        print('ARGS:')
-        print('\t--case C\t\t\tThe case of the lexeme to search.')
-        print('\t--number N\t\t\tThe number of the lexeme to search.')
-        print('\t--gender G\t\t\tThe gender of the lexeme to search.')
-        print('\t--tense T\t\t\tThe tense of the lexeme to search.')
-        print('\t--voice V\t\t\tThe voice of the lexeme to search.')
-        print('\t--mood M\t\t\tThe mood of the lexeme to search.')
-        print('\t--person P\t\t\tThe person of the lexeme to search.')
-        print()
-        print('\tTo see possibilities for these arguments, add the name of the field after')
-        print('\tout (for example: "-h out case")')
-    elif 'out' == help_arg:
+    elif 'search' == help_arg[0]:
+        if len(help_arg) == 1:
+            print(f'USAGE: {EXECUTABLE_NAME} SEARCH')
+            print("\tSpecifies the specific search on the New Testament and Septuagint's text.")
+            print()
+            print('\tThe simplest search would be a simple search for all occurrences of a lexeme, as so:')
+            print('\t\tλογος')
+            print()
+            print('\tThis will search through the entire text of the New Testament for the word "λογος," and return the')
+            print('\tlist of passages, with the specific clause in which the term appears. If you wanted, you could also')
+            print('\tspecify that you only want to see occurrences of λογος in the genitive case: ')
+            print('\t\tλογος --case genitive')
+            print()
+            print('\tSearches can be strung together with "and"s and "or"s; so if I wanted occurrences of λογος in the')
+            print('\tdative singular or the genitive plural, I could do this:')
+            print('\t\tλογος --case dative and λογος --number singular or λογος --case genitive and λογος --number plural')
+            print()
+            print('\tThe order of operations, normally, is "and"s first and then "or"s. To override, this precedence, use')
+            print('\tbraces for the things you want to be done first; this finds all occurrences of λογος in the')
+            print('\tgenitive singular or the dative singular:')
+            print('\t\t[λογος --case genitive or λογος --case dative] and λογος --number singular')
+            print()
+            print('\tThese arguments are positional, so the lexeme should always come first.')
+            print()
+            print('\tThere are different types of searches; to see them, type -h search <search type>')
+            print('\tThe search types are as follows:')
+            print('\t\tlexeme')
+        elif help_arg[1] == 'lexeme':
+            print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
+            print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
+            print()
+            print('ARGS:')
+            print('\t--case C\t\t\tThe case of the lexeme to search.')
+            print('\t--number N\t\t\tThe number of the lexeme to search.')
+            print('\t--gender G\t\t\tThe gender of the lexeme to search.')
+            print('\t--tense T\t\t\tThe tense of the lexeme to search.')
+            print('\t--voice V\t\t\tThe voice of the lexeme to search.')
+            print('\t--mood M\t\t\tThe mood of the lexeme to search.')
+            print('\t--person P\t\t\tThe person of the lexeme to search.')
+        else:
+            print(f'Unknown search type: {help_arg[1]}')
+    elif 'out' == help_arg[0]:
         print(f'USAGE: {EXECUTABLE_NAME} SEARCH --out OUT')
         print('\tSpecifies the format in which the output of the search is to be printed.')
         print()
@@ -173,6 +180,8 @@ def print_help(help_arg: str):
         print('\tparsing\t\t\tThe parsing for the found term.')
         print('\tverse\t\t\tThe verse the search term was found in.')
         print('\tvss_string\t\t\tThe string of text of the verse in which the word was found.')
+    else:
+        print(f'Unrecognized help argument: {" ".join(help_arg)}')
 
 
 def main_loop(gnt_file, lxx_file):
@@ -185,7 +194,7 @@ def main_loop(gnt_file, lxx_file):
         h_index = sys.argv.index('-h' if '-h' in sys.argv else '--help')
         help_arg = ''
         if h_index != len(sys.argv) - 1:
-            help_arg = sys.argv[h_index + 1]
+            help_arg = sys.argv[h_index + 1:]
         print_help(help_arg)
         return
 
