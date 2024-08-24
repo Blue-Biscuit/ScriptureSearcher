@@ -57,6 +57,10 @@ class LexemeQuery(TextQuery):
         self.case = None
         self.number = None
         self.gender = None
+        self.tense = None
+        self.voice = None
+        self.mood = None
+        self.person = None
 
     def __str__(self):
         return f'<{self.lexeme}>'  # TODO: make better
@@ -80,5 +84,27 @@ class LexemeQuery(TextQuery):
             lexeme_rows = [row
                            for row in lexeme_rows
                            if 'gender' in row['morph_code'] and self.gender == row['morph_code']['gender']]
+        if self.tense is not None:
+            lexeme_rows = [row
+                           for row in lexeme_rows
+                           if 'tense' in row['morph_code'] and self.tense == row['morph_code']['tense']]
+        if self.voice is not None:
+            lexeme_rows = [
+                row
+                for row in lexeme_rows
+                if 'voice' in row['morph_code'] and self.voice == row['morph_code']['voice']
+            ]
+        if self.mood is not None:
+            lexeme_rows = [
+                row
+                for row in lexeme_rows
+                if 'mood' in row['morph_code'] and self.mood == row['morph_code']['mood']
+            ]
+        if self.person is not None:
+            lexeme_rows = [
+                row
+                for row in lexeme_rows
+                if 'person' in row['morph_code'] and self.person == row['morph_code']['person']
+            ]
 
         return lexeme_rows
