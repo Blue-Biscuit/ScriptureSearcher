@@ -98,6 +98,10 @@ class CMDToQueryFSMState(enum.Enum):
 
 def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
     """Converts the given string into a lexeme search."""
+    # Error out if tokens is empty.
+    if len(cmd_tokens) == 0:
+        raise ValueError('Syntax: no arguments given to search type "lexeme"; See arguments with "-h search lexeme"')
+
     # The first token will always be the lexeme, so just remove it off-the-top.
     lexeme = cmd_tokens[0]
     cmd_tokens = cmd_tokens[1:]
@@ -239,7 +243,13 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     if 0 == len(cmd_tokens):
         raise ValueError('Invalid empty command given.')
 
-    return _cmd_to_lexeme_search(cmd_tokens)
+    # Parse the different types of searches.
+    if 'lexeme' == cmd_tokens[0]:
+        result = _cmd_to_lexeme_search(cmd_tokens[1:])
+    else:
+        raise ValueError(f'Syntax: unknown command type, "{cmd_tokens[0]}"')
+
+    return result
 
 
 def _is_cmd(token: str) -> bool:
