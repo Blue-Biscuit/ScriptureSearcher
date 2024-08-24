@@ -108,3 +108,19 @@ class LexemeQuery(TextQuery):
             ]
 
         return lexeme_rows
+
+
+class PropertySearch(TextQuery):
+    """Searches by a property on the word."""
+
+    def __init__(self, property_string: str, value: str):
+        self.property = property_string
+        self.value = value
+
+    def __str__(self):
+        return f'<Property: {self.property}, {self.value}>'
+
+    def search(self, dataset: list[dict]) -> list[dict]:
+        """Searches the dataset for the presence of a given property."""
+
+        return [x for x in dataset if self.property in x and x[self.property] == self.value]
