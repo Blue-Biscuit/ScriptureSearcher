@@ -141,6 +141,7 @@ def print_help(help_arg: list[str]):
             print('\tThere are different types of searches; to see them, type -h search <search type>')
             print('\tThe search types are as follows:')
             print('\t\tlexeme')
+            print('\t\tmorphology')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
@@ -153,12 +154,12 @@ def print_help(help_arg: list[str]):
             print('\t--voice V\t\t\tThe voice of the lexeme to search.')
             print('\t--mood M\t\t\tThe mood of the lexeme to search.')
             print('\t--person P\t\t\tThe person of the lexeme to search.')
-        elif help_arg[1] == 'property':
-            print(f'USAGE: {EXECUTABLE_NAME} property PROPERTY VALUE')
-            print('\tSearches the dataset for all terms with a given property value.')
+        elif help_arg[1] == 'morphology':
+            print(f'USAGE: {EXECUTABLE_NAME} morphology PROPERTY VALUE')
+            print('\tSearches the dataset for all terms with a given morphology property value.')
             print()
             print('PROPERTY:')
-            print('\tcase C\t\t\tThe case of a word.')
+            print('\tcase\t\t\tThe case of a word.')
             print('\tnumber\t\t\tThe number of a word.')
             print('\tgender\t\t\tThe gender of a word.')
             print('\ttense\t\t\tThe tense of a word.')

@@ -237,7 +237,7 @@ def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
     return query
 
 
-def _cmd_to_property_search(cmd_tokens: list[str]) -> text_query.MorphologySearch:
+def _cmd_to_morphology_search(cmd_tokens: list[str]) -> text_query.MorphologySearch:
     """Converts a token-list to a property search. Assumes the "property" is already removed."""
     # Error out if tokens haven't been correctly provided.
     if len(cmd_tokens) == 0:
@@ -263,8 +263,8 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     search_type = cmd_tokens[0]
     if 'lexeme' == search_type:
         result = _cmd_to_lexeme_search(cmd_tokens[1:])
-    elif 'property' == search_type:
-        result = _cmd_to_property_search(cmd_tokens[1:])
+    elif 'morphology' == search_type:
+        result = _cmd_to_morphology_search(cmd_tokens[1:])
     else:
         raise ValueError(f'Syntax: unknown search type, "{search_type}"')
 
