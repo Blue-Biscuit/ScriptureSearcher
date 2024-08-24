@@ -1,6 +1,7 @@
 """Defines data structures for doing Queries on the text."""
 
 import helpers
+import re
 
 
 class TextQuery:
@@ -69,7 +70,7 @@ class LexemeQuery(TextQuery):
         """Searches for the given lexeme."""
         # Create a sublist of rows with the given lexeme.
         lexeme_rows = [
-            row for row in dataset if helpers.strip_accents(row['lexeme']) == self.lexeme]
+            row for row in dataset if re.match(self.lexeme, helpers.strip_accents(row['lexeme']))]
 
         # Further limit based upon other fields if provided.
         if self.case is not None:

@@ -1,6 +1,4 @@
 """Provides functions to build search queries from command strings."""
-from multiprocessing.managers import Value
-
 import text_query
 import enum
 
