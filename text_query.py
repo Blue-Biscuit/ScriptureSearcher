@@ -110,8 +110,8 @@ class LexemeQuery(TextQuery):
         return lexeme_rows
 
 
-class PropertySearch(TextQuery):
-    """Searches by a property on the word."""
+class MorphologySearch(TextQuery):
+    """Searches by a morphology on the word."""
 
     def __init__(self, property_string: str, value: str):
         self.property = property_string
@@ -123,4 +123,4 @@ class PropertySearch(TextQuery):
     def search(self, dataset: list[dict]) -> list[dict]:
         """Searches the dataset for the presence of a given property."""
 
-        return [x for x in dataset if self.property in x and x[self.property] == self.value]
+        return [x for x in dataset if self.property in x['morph_code'] and x['morph_code'][self.property] == self.value]
