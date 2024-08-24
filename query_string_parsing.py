@@ -1,4 +1,5 @@
 """Provides functions to build search queries from command strings."""
+from multiprocessing.managers import Value
 
 import text_query
 import enum
@@ -89,7 +90,11 @@ class CMDToQueryFSMState(enum.Enum):
     DEFAULT_STATE = 0,
     PARSING_CASE = 1,
     PARSING_NUMBER = 2,
-    PARSING_GENDER = 3
+    PARSING_GENDER = 3,
+    PARSING_TENSE = 4,
+    PARSING_VOICE = 5,
+    PARSING_MOOD = 6,
+    PARSING_PERSON = 7
 
 
 def _cmd_to_query(cmd: str) -> text_query.TextQuery:
@@ -106,6 +111,10 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     case = None
     number = None
     gender = None
+    tense = None
+    voice = None
+    mood = None
+    person = None
 
     state = CMDToQueryFSMState.DEFAULT_STATE
     i = 0
@@ -121,6 +130,18 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
                 i = i + 1
             elif '--gender' == token:
                 state = CMDToQueryFSMState.PARSING_GENDER
+                i = i + 1
+            elif '--tense' == token:
+                state = CMDToQueryFSMState.PARSING_TENSE
+                i = i + 1
+            elif '--voice' == token:
+                state = CMDToQueryFSMState.PARSING_VOICE
+                i = i + 1
+            elif '--mood' == token:
+                state = CMDToQueryFSMState.PARSING_MOOD
+                i = i + 1
+            elif '--person' == token:
+                state = CMDToQueryFSMState.PARSING_PERSON
                 i = i + 1
             else:  # Invalid token
                 raise ValueError(f'Syntax: invalid search token, "{token}"')
@@ -151,6 +172,42 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
             gender = token
             i = i + 1
             state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing tense
+        elif CMDToQueryFSMState.PARSING_TENSE == state:
+            if tense is not None:
+                raise ValueError('Syntax: cannot define tense twice')
+            if token not in ['present', 'imperfect', 'aorist', 'perfect', 'future', 'pluperfect']:
+                raise ValueError(f'Value: not a tense, "{token}"')
+            tense = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing voice
+        elif CMDToQueryFSMState.PARSING_VOICE == state:
+            if voice is not None:
+                raise ValueError('Syntax: cannot define tense twice')
+            if token not in ['active', 'middle', 'passive']:
+                raise ValueError(f'Value: not a voice, "{token}"')
+            voice = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing mood
+        elif CMDToQueryFSMState.PARSING_MOOD == state:
+            if mood is not None:
+                raise ValueError('Syntax: cannot define tense twice')
+            if token not in ['indicative', 'imperative', 'participle', 'infinitive', 'subjunctive', 'optative']:
+                raise ValueError(f'Value: not a mood, "{token}"')
+            mood = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
+        # Parsing person
+        elif CMDToQueryFSMState.PARSING_PERSON == state:
+            if person is not None:
+                raise ValueError('Syntax: cannot define tense twice')
+            if token not in ['first', 'second', 'third']:
+                raise ValueError(f'Value: not a person, "{token}"')
+            person = token
+            i = i + 1
+            state = CMDToQueryFSMState.DEFAULT_STATE
 
     # Error out if we ended in an invalid state.
     if state == CMDToQueryFSMState.PARSING_CASE:
@@ -159,12 +216,24 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
         raise ValueError('Syntax: lacking argument to --number')
     elif state == CMDToQueryFSMState.PARSING_GENDER:
         raise ValueError('Syntax: lacking argument to --gender')
+    elif state == CMDToQueryFSMState.PARSING_TENSE:
+        raise ValueError('Syntax: lacking argument to --tense')
+    elif state == CMDToQueryFSMState.PARSING_VOICE:
+        raise ValueError('Syntax: lacking argument to --voice')
+    elif state == CMDToQueryFSMState.PARSING_MOOD:
+        raise ValueError('Syntax: lacking argument to --mood')
+    elif state == CMDToQueryFSMState.PARSING_PERSON:
+        raise ValueError('Syntax: lacking argument to --person')
 
     # Construct the final query.
     query = text_query.LexemeQuery(lexeme)
     query.case = case
     query.number = number
     query.gender = gender
+    query.tense = tense
+    query.voice = voice
+    query.mood = mood
+    query.person = person
 
     return query
 
