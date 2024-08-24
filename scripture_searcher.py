@@ -10,7 +10,7 @@ OPEN_GNT_FILEPATH = "opengnt.json"
 LXX_FILEPATH = 'lxx.json'
 APP_NAME = 'SyntaxSearcher'
 APP_VERSION = 'alpha'
-EXECUTABLE_NAME = 'nt_syntax_searcher.py'
+EXECUTABLE_NAME = 'scripture_searcher.py'
 
 
 def get_window(word: dict, before: int, after: int) -> str:
@@ -74,7 +74,7 @@ def get_verse(word: dict) -> str:
     return words_string
 
 def out_format(
-        format_str: str, row: dict[str, str | int], num_rows: int, gnt_data: list[dict[str, str | int]]) -> str:
+        format_str: str, row: dict[str, str | int], num_rows: int) -> str:
     """Conforms output to the given format string."""
     # Book, chapter, and verse.
     result = format_str.replace('book', (row['Book']))
@@ -100,7 +100,7 @@ def print_help(help_arg: str):
     # If no argument was provided, just print general help.
     if '' == help_arg:
         print(f'USAGE: {EXECUTABLE_NAME} [ARGS] SEARCH [--out OUT]')
-        print("\tPerforms complex searches through the Greek New Testament's text.")
+        print("\tPerforms complex searches through the Greek New Testament's and the Septuagint's text.")
         print()
         print('ARGS:')
         print('\t-h | --help H\t\t\tPrints this help and exits. Prints help about a specific part of the program')
@@ -116,7 +116,7 @@ def print_help(help_arg: str):
         print('\tout\t\t\tPrints help for output.')
     elif 'search' == help_arg:
         print(f'USAGE: {EXECUTABLE_NAME} SEARCH_TERM [ARGS]')
-        print('\tSpecifies the specific search on the New Testament text.')
+        print("\tSpecifies the specific search on the New Testament and Septuagint's text.")
         print()
         print('\tThe simplest search would be a simple search for all occurrences of a lexeme, as so:')
         print('\t\tλογος')
@@ -217,7 +217,7 @@ def main_loop(gnt_file, lxx_file):
     # Print the output.
     output_data = query.search(search_data)
     for row in output_data:
-        print(out_format(out_format_str, row, len(output_data), gnt_data))
+        print(out_format(out_format_str, row, len(output_data)))
 
 
 def main():
