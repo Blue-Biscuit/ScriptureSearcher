@@ -141,6 +141,13 @@ def print_help(help_arg: str):
         print('\t--case C\t\t\tThe case of the lexeme to search.')
         print('\t--number N\t\t\tThe number of the lexeme to search.')
         print('\t--gender G\t\t\tThe gender of the lexeme to search.')
+        print('\t--tense T\t\t\tThe tense of the lexeme to search.')
+        print('\t--voice V\t\t\tThe voice of the lexeme to search.')
+        print('\t--mood M\t\t\tThe mood of the lexeme to search.')
+        print('\t--person P\t\t\tThe person of the lexeme to search.')
+        print()
+        print('\tTo see possibilities for these arguments, add the name of the field after')
+        print('\tout (for example: "-h out case")')
     elif 'out' == help_arg:
         print(f'USAGE: {EXECUTABLE_NAME} SEARCH --out OUT')
         print('\tSpecifies the format in which the output of the search is to be printed.')
