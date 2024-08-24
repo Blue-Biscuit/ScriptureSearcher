@@ -61,7 +61,7 @@ class LexemeQuery(TextQuery):
     def __str__(self):
         return f'<{self.lexeme}>'  # TODO: make better
 
-    def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
+    def search(self, dataset: list[dict]) -> list[dict[str, str|int]]:
         """Searches for the given lexeme."""
         # Create a sublist of rows with the given lexeme.
         lexeme_rows = [
@@ -71,14 +71,14 @@ class LexemeQuery(TextQuery):
         if self.case is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.case in helpers.interpret_rmac_code(row['rmac'])]
+                           if 'case' in row['morph_code'] and self.case == row['morph_code']['case']]
         if self.number is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.number in helpers.interpret_rmac_code(row['rmac'])]
+                           if 'number' in row['morph_code'] and self.number == row['morph_code']['number']]
         if self.gender is not None:
             lexeme_rows = [row
                            for row in lexeme_rows
-                           if self.gender in helpers.interpret_rmac_code(row['rmac'])]
+                           if 'gender' in row['morph_code'] and self.gender == row['morph_code']['gender']]
 
         return lexeme_rows
