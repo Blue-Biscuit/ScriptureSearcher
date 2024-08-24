@@ -96,13 +96,8 @@ class CMDToQueryFSMState(enum.Enum):
     PARSING_MOOD = 6,
     PARSING_PERSON = 7
 
-
-def _cmd_to_query(cmd: str) -> text_query.TextQuery:
-    """Converts a command into a text query."""
-    cmd_tokens = cmd.split()
-    if 0 == len(cmd_tokens):
-        raise ValueError('Invalid empty command given.')
-
+def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
+    """Converts the given string into a lexeme search."""
     # The first token will always be the lexeme, so just remove it off-the-top.
     lexeme = cmd_tokens[0]
     cmd_tokens = cmd_tokens[1:]
@@ -236,6 +231,15 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     query.person = person
 
     return query
+
+
+def _cmd_to_query(cmd: str) -> text_query.TextQuery:
+    """Converts a command into a text query."""
+    cmd_tokens = cmd.split()
+    if 0 == len(cmd_tokens):
+        raise ValueError('Invalid empty command given.')
+
+    return _cmd_to_lexeme_search(cmd_tokens)
 
 
 def _is_cmd(token: str) -> bool:
