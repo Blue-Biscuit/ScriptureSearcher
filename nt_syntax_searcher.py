@@ -50,6 +50,29 @@ def get_window(word: dict, before: int, after: int) -> str:
     return text
 
 
+def get_verse(word: dict) -> str:
+    """Gets the text of the containing verse."""
+    word_index = word['word_index']
+    verse_number = word['Verse']
+    parent_set = word['parent_set']
+
+    # Find the start of the verse.
+    start_verse_index = word_index
+    while start_verse_index >= 0 and parent_set[start_verse_index]['Verse'] == verse_number:
+        start_verse_index = start_verse_index - 1
+    start_verse_index = start_verse_index + 1
+
+    # Find the end of the verse.
+    end_verse_index = word_index
+    while end_verse_index < len(parent_set) and parent_set[end_verse_index]['Verse'] == verse_number:
+        end_verse_index = end_verse_index + 1
+    end_verse_index = end_verse_index - 1
+
+    # Return the slice of the words.
+    words_from_verse = parent_set[start_verse_index:end_verse_index+1]
+    words_string = ' '.join([x['word'] for x in words_from_verse])
+    return words_string
+
 def out_format(
         format_str: str, row: dict[str, str | int], num_rows: int, gnt_data: list[dict[str, str | int]]) -> str:
     """Conforms output to the given format string."""
@@ -66,6 +89,8 @@ def out_format(
 
     while 'window' in result:
         result = result.replace('window', get_window(row, 5, 5))
+    while 'vss_string' in result:
+        result = result.replace('vss_string', get_verse(row))
 
     return result
 
@@ -140,6 +165,7 @@ def print_help(help_arg: str):
         print('\tnum_rows\t\t\tThe total number of occurrences found from the search.')
         print('\tparsing\t\t\tThe parsing for the found term.')
         print('\tverse\t\t\tThe verse the search term was found in.')
+        print('\tvss_string\t\t\tThe string of text of the verse in which the word was found.')
 
 
 def main_loop(gnt_file, lxx_file):
@@ -158,7 +184,7 @@ def main_loop(gnt_file, lxx_file):
 
     # If '--out' has been given as an argument, take it and everything after as the string to be given to format
     # output.
-    out_format_str = 'book chapter.verse: window'
+    out_format_str = 'book chapter.verse: vss_string'
     if '--out' in sys.argv:
         out_idx = sys.argv.index('--out')
         if out_idx == len(sys.argv) - 1:
