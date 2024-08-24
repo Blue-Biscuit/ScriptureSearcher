@@ -96,12 +96,11 @@ class CMDToQueryFSMState(enum.Enum):
     PARSING_MOOD = 6,
     PARSING_PERSON = 7
 
-
-def _cmd_to_query(cmd: str) -> text_query.TextQuery:
-    """Converts a command into a text query."""
-    cmd_tokens = cmd.split()
-    if 0 == len(cmd_tokens):
-        raise ValueError('Invalid empty command given.')
+def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
+    """Converts the given string into a lexeme search."""
+    # Error out if tokens is empty.
+    if len(cmd_tokens) == 0:
+        raise ValueError('Syntax: no arguments given to search type "lexeme"; See arguments with "-h search lexeme"')
 
     # The first token will always be the lexeme, so just remove it off-the-top.
     lexeme = cmd_tokens[0]
@@ -236,6 +235,40 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     query.person = person
 
     return query
+
+
+def _cmd_to_morphology_search(cmd_tokens: list[str]) -> text_query.MorphologySearch:
+    """Converts a token-list to a property search. Assumes the "property" is already removed."""
+    # Error out if tokens haven't been correctly provided.
+    if len(cmd_tokens) == 0:
+        raise ValueError(
+            'Syntax: no arguments given to search type "property"; See arguments with "-h search property".'
+        )
+    if len(cmd_tokens) == 1:
+        raise ValueError(
+            f'Syntax: no value provided to check against the "{cmd_tokens[0]}" property.'
+        )
+
+    # Write the fields to a new search.
+    return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
+
+
+def _cmd_to_query(cmd: str) -> text_query.TextQuery:
+    """Converts a command into a text query."""
+    cmd_tokens = cmd.split()
+    if 0 == len(cmd_tokens):
+        raise ValueError('Invalid empty command given.')
+
+    # Parse the different types of searches.
+    search_type = cmd_tokens[0]
+    if 'lexeme' == search_type:
+        result = _cmd_to_lexeme_search(cmd_tokens[1:])
+    elif 'morphology' == search_type:
+        result = _cmd_to_morphology_search(cmd_tokens[1:])
+    else:
+        raise ValueError(f'Syntax: unknown search type, "{search_type}"')
+
+    return result
 
 
 def _is_cmd(token: str) -> bool:
