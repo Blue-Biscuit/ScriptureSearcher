@@ -131,8 +131,6 @@ class AnteQuery(TextQuery):
     """Gets all terms a certain number of terms before the input term."""
 
     def __init__(self, number: int):
-        if number == 0:
-            raise ValueError('AnteQuery: ante-range cannot be 0.')
         self.number = number
 
     def __str__(self):
@@ -155,8 +153,6 @@ class PostQuery(TextQuery):
     """Gets all terms a certain number of terms after the input term."""
 
     def __init__(self, number: int):
-        if number == 0:
-            raise ValueError('PostQuery: ante-range cannot be 0.')
         self.number = number
 
     def __str__(self):
