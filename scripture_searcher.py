@@ -142,6 +142,7 @@ def print_help(help_arg: list[str]):
             print('\tThe search types are as follows:')
             print('\t\tlexeme')
             print('\t\tmorphology')
+            print('\t\twindow')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
@@ -173,6 +174,17 @@ def print_help(help_arg: list[str]):
             print('VALUE:')
             print('\tThe value to search for. If the selected property has this value, then it will be included')
             print('\tin the result.')
+        elif help_arg[1] == 'window':
+            print(f'USAGE: {EXECUTABLE_NAME} window ANTE POST')
+            print('\tSearches the dataset for the words before and after every term.')
+            print()
+            print("\tNOTE: Do not use this on the whole dataset! It's intended to be used with \"and\"s and \"or\"s.")
+            print()
+            print('ANTE:')
+            print('\tThe number of words before the input to consider. Can be zero.')
+            print()
+            print('POST:')
+            print('\tThe number of words after the input to consider. Can be zero.')
 
         else:
             print(f'Unknown search type: {help_arg[1]}')
