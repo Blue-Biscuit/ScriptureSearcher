@@ -16,7 +16,7 @@ NUM_WORDS_IN_LXX = 623693
 def load_lexemes(lxx_data: list[dict], file):
     reader = csv.reader(file, delimiter='\t')
     for idx, row in enumerate(reader):
-        lxx_data[idx]['lexeme'] = row[1]
+        lxx_data[idx]['lexeme'] = [row[1]]
 
 
 def load_versification(lxx_data: list[dict], file):
