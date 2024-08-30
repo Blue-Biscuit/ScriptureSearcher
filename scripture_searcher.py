@@ -81,8 +81,8 @@ def out_format(
     result = result.replace('chapter', row['Chapter'])
     result = result.replace('verse', row['Verse'])
 
-    # Parsing.
-    # result = result.replace('parsing', row['morph_code'])
+    # Word
+    result = result.replace('word', row['word'])
 
     # The number of rows returned as a result.
     result = result.replace('num_rows', str(num_rows))
@@ -142,6 +142,7 @@ def print_help(help_arg: list[str]):
             print('\tThe search types are as follows:')
             print('\t\tlexeme')
             print('\t\tmorphology')
+            print('\t\twindow')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
@@ -173,7 +174,17 @@ def print_help(help_arg: list[str]):
             print('VALUE:')
             print('\tThe value to search for. If the selected property has this value, then it will be included')
             print('\tin the result.')
-
+        elif help_arg[1] == 'window':
+            print(f'USAGE: {EXECUTABLE_NAME} window ANTE POST')
+            print('\tSearches the dataset for the words before and after every term.')
+            print()
+            print("\tNOTE: Do not use this on the whole dataset! It's intended to be used with \"and\"s and \"or\"s.")
+            print()
+            print('ANTE:')
+            print('\tThe number of words before the input to consider. Can be zero.')
+            print()
+            print('POST:')
+            print('\tThe number of words after the input to consider. Can be zero.')
         else:
             print(f'Unknown search type: {help_arg[1]}')
     elif help_arg[0] == 'out':
@@ -198,9 +209,9 @@ def print_help(help_arg: list[str]):
         print('\tchapter\t\t\tThe chapter the search term was found in.')
         print('\tclause\t\t\tThe text of the containing clause of the search term.')
         print('\tnum_rows\t\t\tThe total number of occurrences found from the search.')
-        print('\tparsing\t\t\tThe parsing for the found term.')
         print('\tverse\t\t\tThe verse the search term was found in.')
         print('\tvss_string\t\t\tThe string of text of the verse in which the word was found.')
+        print('\tword\t\t\tThe word found in the query.')
     else:
         print(f'Unrecognized help argument: {" ".join(help_arg)}')
 

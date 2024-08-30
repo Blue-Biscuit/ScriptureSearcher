@@ -94,6 +94,7 @@ class CMDToQueryFSMState(enum.Enum):
     PARSING_MOOD = 6,
     PARSING_PERSON = 7
 
+
 def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
     """Converts the given string into a lexeme search."""
     # Error out if tokens is empty.
@@ -251,6 +252,33 @@ def _cmd_to_morphology_search(cmd_tokens: list[str]) -> text_query.MorphologySea
     return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
 
 
+def _cmd_to_window_search(cmd_tokens: list[str]) -> text_query.WindowQuery:
+    """Converts the given cmd to a window query."""
+    # Do error checking on everything.
+    if len(cmd_tokens) == 0:
+        raise ValueError(
+            'Syntax: no arguments given to search type "window"; See arguments with "-h search window".'
+        )
+    if len(cmd_tokens) == 1:
+        raise ValueError(
+            'Syntax: no value provided to for POST'
+        )
+    try:
+        ante = int(cmd_tokens[0])
+        post = int(cmd_tokens[1])
+    except ValueError:
+        raise ValueError(
+            'Syntax: arguments to ANTE and POST must integers.'
+        )
+    if ante < 0 or post < 0:
+        raise ValueError(
+            'Syntax: arguments to ANTE and POST must be positive.'
+        )
+
+    # Set up the query.
+    return text_query.WindowQuery(ante, post)
+
+
 def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     """Converts a command into a text query."""
     cmd_tokens = cmd.split()
@@ -263,6 +291,8 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
         result = _cmd_to_lexeme_search(cmd_tokens[1:])
     elif 'morphology' == search_type:
         result = _cmd_to_morphology_search(cmd_tokens[1:])
+    elif 'window' == search_type:
+        result = _cmd_to_window_search(cmd_tokens[1:])
     else:
         raise ValueError(f'Syntax: unknown search type, "{search_type}"')
 

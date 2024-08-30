@@ -125,3 +125,68 @@ class MorphologySearch(TextQuery):
         """Searches the dataset for the presence of a given property."""
 
         return [x for x in dataset if self.property in x['morph_code'] and x['morph_code'][self.property] == self.value]
+
+
+class AnteQuery(TextQuery):
+    """Gets all terms a certain number of terms before the input term."""
+
+    def __init__(self, number: int):
+        self.number = number
+
+    def __str__(self):
+        return f'<AnteQuery: {self.number}>'
+
+    def search(self, dataset: list[dict]) -> list[dict]:
+        result = []
+        if self.number == 0:
+            return result
+
+        for word in dataset:
+            i = word['word_index']
+            parent_set = word['parent_set']
+
+            start_index = i - self.number
+            if start_index < 0:
+                start_index = 0
+
+            result = result + parent_set[start_index:i]
+        return result
+
+
+class PostQuery(TextQuery):
+    """Gets all terms a certain number of terms after the input term."""
+
+    def __init__(self, number: int):
+        self.number = number
+
+    def __str__(self):
+        return f'<PostQuery: {self.number}>'
+
+    def search(self, dataset: list[dict]) -> list[dict]:
+        result = []
+        if self.number == 0:
+            return result
+
+        for word in dataset:
+            i = word['word_index']
+            parent_set = word['parent_set']
+
+            end_idx = i + self.number
+            if end_idx >= len(parent_set):
+                end_idx = len(parent_set) - 1
+
+            result = result + parent_set[i+1:end_idx+1]
+        return result
+
+
+class WindowQuery(OrQuery):
+    """Gets all terms in a window before and after the input. This is a shorthand for an OrQuery between an ante and
+    post."""
+
+    def __init__(self, ante: int, post: int):
+        self.ante_num = ante
+        self.post_num = post
+        super().__init__(AnteQuery(ante), PostQuery(post))
+
+    def __str__(self):
+        return f'<WindowSearch: {self.ante_num}, {self.post_num}>'
