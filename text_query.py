@@ -69,8 +69,18 @@ class LexemeQuery(TextQuery):
     def search(self, dataset: list[dict]) -> list[dict[str, str|int]]:
         """Searches for the given lexeme."""
         # Create a sublist of rows with the given lexeme.
+        def matches_lex(row, lex):
+            """True if one of the lexemes is matched."""
+            # Strip the accents in lexeme.
+            stripped = [helpers.strip_accents(x) for x in row['lexeme']]
+
+            for x in stripped:
+                if re.match(lex, x):
+                    return True
+            return False
+
         lexeme_rows = [
-            row for row in dataset if re.match(self.lexeme, helpers.strip_accents(row['lexeme']))]
+            row for row in dataset if matches_lex(row, self.lexeme)]
 
         # Further limit based upon other fields if provided.
         if self.case is not None:
