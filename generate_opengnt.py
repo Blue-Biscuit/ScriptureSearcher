@@ -369,6 +369,14 @@ def convert_line(row: list[str], idx: int) -> dict:
             # Transform the book into a string first.
             book_number = int(helpers.get_row_val(field, row))
             result[field] = interpret_book_code(book_number)
+        elif field == 'lexeme':
+            # There's the possibility of there being multiple "options" for the lexeme. So the lexeme stored on
+            # υδωρ is "υδωρ, υδατος." In the future, it would be beneficial to figure out whether the lexeme is always
+            # the first option. (υδατος not being a lexeme, but a genitive form) But, for now, this problem is here
+            # circumvented by registering them both as lexemes.
+            lexemes = helpers.get_row_val(field, row).split(',')
+            lexemes = [x.strip() for x in lexemes]
+            result[field] = lexemes
         else:
             result[field] = helpers.get_row_val(field, row)
 
