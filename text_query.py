@@ -138,6 +138,9 @@ class AnteQuery(TextQuery):
 
     def search(self, dataset: list[dict]) -> list[dict]:
         result = []
+        if self.number == 0:
+            return result
+
         for word in dataset:
             i = word['word_index']
             parent_set = word['parent_set']
@@ -148,6 +151,7 @@ class AnteQuery(TextQuery):
 
             result = result + parent_set[start_index:i]
         return result
+
 
 class PostQuery(TextQuery):
     """Gets all terms a certain number of terms after the input term."""
@@ -160,6 +164,9 @@ class PostQuery(TextQuery):
 
     def search(self, dataset: list[dict]) -> list[dict]:
         result = []
+        if self.number == 0:
+            return result
+
         for word in dataset:
             i = word['word_index']
             parent_set = word['parent_set']
@@ -168,8 +175,9 @@ class PostQuery(TextQuery):
             if end_idx >= len(parent_set):
                 end_idx = len(parent_set) - 1
 
-            result = result + parent_set[end_idx:i]
+            result = result + parent_set[i+1:end_idx+1]
         return result
+
 
 class WindowQuery(OrQuery):
     """Gets all terms in a window before and after the input. This is a shorthand for an OrQuery between an ante and
