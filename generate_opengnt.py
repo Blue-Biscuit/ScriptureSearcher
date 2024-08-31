@@ -387,7 +387,6 @@ def convert_line(row: list[str], idx: int) -> dict:
 
 
 def to_stats(dataset: list[dict]) -> dict:
-    print('Generating NT statistics...')
     book_names = []
     chapter_limits = {}
     for i, x in enumerate(dataset):
@@ -408,15 +407,18 @@ def to_stats(dataset: list[dict]) -> dict:
 def process_file(file):
     """Processes the OpenGNT file."""
     # Do the conversion.
+    print('Loading dataset as JSON...')
     reader = csv.reader(file, delimiter='\t')
     next(reader)  # Skip the first line (the table header)
     gnt_data_json = [convert_line(x, idx) for idx, x in enumerate(reader)]
 
     # Output to a file.
+    print('Outputing to file...')
     with open(OUTPUT_FILE_NAME, 'w', encoding='utf-8') as out_f:
         json.dump(gnt_data_json, out_f)
 
     # Get some statistics on the dataset, so that we can output it.
+    print('Dumping statistics...')
     with open('nt_stats.json', 'w', encoding='utf-8') as out_f:
         json.dump(to_stats(gnt_data_json), out_f)
 
