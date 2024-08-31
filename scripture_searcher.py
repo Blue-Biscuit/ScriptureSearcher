@@ -5,7 +5,6 @@ import json
 import sys
 import query_string_parsing
 
-
 OPEN_GNT_FILEPATH = "opengnt.json"
 LXX_FILEPATH = 'lxx.json'
 APP_NAME = 'SyntaxSearcher'
@@ -241,8 +240,10 @@ def main_loop(gnt_file, lxx_file):
             out_format_str = ' '.join(sys.argv[out_idx + 1:])
             del sys.argv[out_idx:]
 
+    # Create a search query based upon input.
+    query_parser = query_string_parsing.QueryStringParser()
     args = ' '.join(sys.argv[1:])
-    query = query_string_parsing.to_query(args)
+    query = query_parser.to_query(args)
 
     # Load the relevant databases.
     gnt_data = json.load(gnt_file)
