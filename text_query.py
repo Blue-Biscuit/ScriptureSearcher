@@ -50,7 +50,24 @@ class OrQuery(TextQuery):
         return lhs_result
 
 
-class LexemeQuery(TextQuery):
+class WinnowSearch(TextQuery):
+    """A search which winnows down its input based upon a condition. This is abstract, and should not be used
+    of itself, but through a subclass."""
+    def search(self, dataset: list[dict]) -> list[dict]:
+        winnow_result = [x for x in dataset if self.winnow(x)]
+        result = self.post_winnow(winnow_result)
+        return result
+
+    def winnow(self, x: dict):
+        """Return true if 'x' should be in the result."""
+        raise NotImplementedError("Don't use WinnowSearch directly! Use a subclass!")
+
+    def post_winnow(self, dataset: list[dict]) -> list[dict]:
+        """This method can be overridden if transforms are desired to be done to the dataset after winnowing it."""
+        return dataset
+
+
+class LexemeQuery(WinnowSearch):
     """Searches by lexeme."""
 
     def __init__(self, lexeme: str):
@@ -66,59 +83,50 @@ class LexemeQuery(TextQuery):
     def __str__(self):
         return f'<{self.lexeme}>'  # TODO: make better
 
-    def search(self, dataset: list[dict]) -> list[dict[str, str|int]]:
-        """Searches for the given lexeme."""
-        # Create a sublist of rows with the given lexeme.
-        def matches_lex(row, lex):
-            """True if one of the lexemes is matched."""
-            # Strip the accents in lexeme.
-            stripped = [helpers.strip_accents(x) for x in row['lexeme']]
+    def winnow(self, x: dict):
+        """Should be in the result if x matches the internal lexeme."""
+        stripped = [helpers.strip_accents(y) for y in x['lexeme']]
+        for y in stripped:
+            if re.match(self.lexeme, y):
+                return True
+        return False
 
-            for x in stripped:
-                if re.match(lex, x):
-                    return True
-            return False
-
-        lexeme_rows = [
-            row for row in dataset if matches_lex(row, self.lexeme)]
-
-        # Further limit based upon other fields if provided.
+    def post_winnow(self, dataset: list[dict]) -> list[dict]:
         if self.case is not None:
-            lexeme_rows = [row
-                           for row in lexeme_rows
+            dataset = [row
+                           for row in dataset
                            if 'case' in row['morph_code'] and self.case == row['morph_code']['case']]
         if self.number is not None:
-            lexeme_rows = [row
-                           for row in lexeme_rows
+            dataset = [row
+                           for row in dataset
                            if 'number' in row['morph_code'] and self.number == row['morph_code']['number']]
         if self.gender is not None:
-            lexeme_rows = [row
-                           for row in lexeme_rows
+            dataset = [row
+                           for row in dataset
                            if 'gender' in row['morph_code'] and self.gender == row['morph_code']['gender']]
         if self.tense is not None:
-            lexeme_rows = [row
-                           for row in lexeme_rows
+            dataset = [row
+                           for row in dataset
                            if 'tense' in row['morph_code'] and self.tense == row['morph_code']['tense']]
         if self.voice is not None:
-            lexeme_rows = [
+            dataset = [
                 row
-                for row in lexeme_rows
+                for row in dataset
                 if 'voice' in row['morph_code'] and self.voice == row['morph_code']['voice']
             ]
         if self.mood is not None:
-            lexeme_rows = [
+            dataset = [
                 row
-                for row in lexeme_rows
+                for row in dataset
                 if 'mood' in row['morph_code'] and self.mood == row['morph_code']['mood']
             ]
         if self.person is not None:
-            lexeme_rows = [
+            dataset = [
                 row
-                for row in lexeme_rows
+                for row in dataset
                 if 'person' in row['morph_code'] and self.person == row['morph_code']['person']
             ]
-
-        return lexeme_rows
+        return dataset
 
 
 class MorphologySearch(TextQuery):
