@@ -279,11 +279,28 @@ def _cmd_to_window_search(cmd_tokens: list[str]) -> text_query.WindowQuery:
     return text_query.WindowQuery(ante, post)
 
 
-def _cmd_to_query(cmd: str) -> text_query.TextQuery:
+def _get_canon_section(section_specifier: str, dataset: list[dict]) -> list[dict]:
+    """Gets the specified part of the canon which the user has requested to search here."""
+    if len(section_specifier) == 0:
+        raise ValueError('Invalid empty section specifier given.')
+
+
+
+def _cmd_to_query(cmd: str, dataset: list[dict]) -> text_query.TextQuery:
     """Converts a command into a text query."""
     cmd_tokens = cmd.split()
+
+    # Parse the section tag, if it has been given.
+    section_arg = '--section'
+    if section_arg in cmd_tokens:
+        section_idx = cmd_tokens.index(section_arg)
+        section = _get_canon_section(' '.join(cmd_tokens[section_idx+1:]), dataset)
+        del cmd_tokens[section_idx:] # Remove this section from the tokens, so that we don't disrupt later parsing.
+
+    # Make sure the string isn't now empty.
     if 0 == len(cmd_tokens):
         raise ValueError('Invalid empty command given.')
+
 
     # Parse the different types of searches.
     search_type = cmd_tokens[0]
@@ -329,20 +346,20 @@ def _replace_parens_with_sublists(tokens: list[str]) -> list:
     return result
 
 
-def _argument_to_query(arg) -> text_query.TextQuery:
+def _argument_to_query(arg, dataset: list[dict]) -> text_query.TextQuery:
     """Converts the given op argument to a query. This is necessary because the arguments can be of different types:
     a token list, an already-formed query, etc."""
     if issubclass(type(arg), text_query.TextQuery):
         return arg
     elif type(arg) is str and _is_cmd(arg):
-        return _cmd_to_query(arg)
+        return _cmd_to_query(arg, dataset)
     elif type(arg) is list:
-        return _tokens_list_to_query(arg)
+        return _tokens_list_to_query(arg, dataset)
     else:
         raise ValueError(f'Syntax: unexpected argument to op, {arg}')
 
 
-def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
+def _tokens_list_to_query(tokens: list[str], dataset: list[dict]) -> text_query.TextQuery:
     """Converts a list of tokens to a query."""
 
     # Get rid of the parentheses, for easier processing.
@@ -355,8 +372,8 @@ def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
         # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
         if i == 0 or i == len(no_parens_list):
             raise ValueError('Syntax: no argument to &.')
-        lhs = _argument_to_query(no_parens_list[i-1])
-        rhs = _argument_to_query(no_parens_list[i+1])
+        lhs = _argument_to_query(no_parens_list[i-1], dataset)
+        rhs = _argument_to_query(no_parens_list[i+1], dataset)
         and_query = text_query.AndQuery(lhs, rhs)
         del no_parens_list[i-1:i+2]
         no_parens_list.insert(i-1, and_query)
@@ -368,8 +385,8 @@ def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
         # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
         if i == 0 or i == len(no_parens_list):
             raise ValueError('Syntax: no argument to &.')
-        lhs = _argument_to_query(no_parens_list[i - 1])
-        rhs = _argument_to_query(no_parens_list[i + 1])
+        lhs = _argument_to_query(no_parens_list[i - 1], dataset)
+        rhs = _argument_to_query(no_parens_list[i + 1], dataset)
         and_query = text_query.OrQuery(lhs, rhs)
         del no_parens_list[i - 1:i + 2]
         no_parens_list.insert(i - 1, and_query)
@@ -377,16 +394,11 @@ def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
     # This should never happen at this point, but if there's more than one element in the list, we've hit an error.
     if 1 != len(no_parens_list):
         raise ValueError("Bug: Something's on fire. Tell Andrew!!!")
-    return _argument_to_query(no_parens_list[0])
+    return _argument_to_query(no_parens_list[0], dataset)
 
 
-def to_query(command: str) -> text_query.TextQuery:
+def to_query(command: str, dataset: list[dict]) -> text_query.TextQuery:
     """Converts the command into a query."""
     # Get the tokens in the command string.
     tokens = _tokenize_command_str(command)
-    return _tokens_list_to_query(tokens)
-
-
-if __name__ == '__main__':
-    # Test tokenizer.
-    print(to_query('(please work | λογος) | αληθινος & ((ρημα & lmao) | lol)'))
+    return _tokens_list_to_query(tokens, dataset)

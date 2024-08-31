@@ -247,9 +247,6 @@ def main_loop(gnt_file, lxx_file):
             out_format_str = ' '.join(sys.argv[out_idx + 1:])
             del sys.argv[out_idx:]
 
-    args = ' '.join(sys.argv[1:])
-    query = query_string_parsing.to_query(args)
-
     # Load the relevant databases.
     gnt_data = json.load(gnt_file)
     for word in gnt_data:
@@ -260,6 +257,10 @@ def main_loop(gnt_file, lxx_file):
         word['parent_set'] = lxx_data
 
     search_data = lxx_data + gnt_data
+
+    # Convert the user's input into a ScriptureSearcher query.
+    args = ' '.join(sys.argv[1:])
+    query = query_string_parsing.to_query(args, search_data)
 
     # Print the output.
     output_data = query.search(search_data)
