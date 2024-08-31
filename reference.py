@@ -26,6 +26,41 @@ class Reference:
         regex = re.compile('[0-9]+([.:][0-9]+[a-z]?)?')
         return bool(regex.match(string))
 
+    def __eq__(self, other: 'Reference'):
+        return (self.chapter_number == other.chapter_number
+                and self.verse_number == other.verse_number
+                and self.verse_letter == other.verse_letter)
+
+    def __lt__(self, other: 'Reference'):
+        """A reference that is "less than" another is defined as one which comes in a book first."""
+        # Deal with the chapter and verse number, since these are easier.
+        if self.chapter_number >= other.chapter_number:
+            return False
+        elif self.verse_number >= other.verse_number:
+            return False
+
+        # If the second character is None but the first is not, then that means the second is earlier (hasn't gotten
+        # to characters yet).
+        if self.verse_letter is not None and other.verse_letter is None:
+            return False
+
+        # If both are None, then these are equivalent.
+        if self.verse_letter is None and other.verse_letter is None:
+            return False
+
+        # Otherwise, compare ord() values (these should all be ASCII).
+        return ord(self.verse_letter) < ord(other.verse_letter)
+
+    def __le__(self, other):
+        return self < other or self == other
+
+    def __gt__(self, other):
+        return not self < other and not self == other
+
+    def __ge__(self, other):
+        return self > other or self == other
+
+
     @staticmethod
     def from_str(string: str) -> 'Reference':
         """Builds a reference from a string representation. This accepts either ":" or "." as the chapter/verse
