@@ -20,7 +20,11 @@ class CMDToQueryFSMState(enum.Enum):
     PARSING_MOOD = 6,
     PARSING_PERSON = 7
 
+
 class QueryStringParser:
+    """Provides a method to parse a command string based upon some options given at construction."""
+    def __init__(self, data_stats: dict):
+        self.data_stats = data_stats
 
     def _tokenize_command_str(self, command: str) -> list[str]:
         tokens = []
@@ -94,7 +98,6 @@ class QueryStringParser:
             tokens.append(command_str)
 
         return tokens
-
 
     def _cmd_to_lexeme_search(self, cmd_tokens: list[str]) -> text_query.LexemeQuery:
         """Converts the given string into a lexeme search."""
@@ -236,7 +239,6 @@ class QueryStringParser:
 
         return query
 
-
     def _cmd_to_morphology_search(self, cmd_tokens: list[str]) -> text_query.MorphologySearch:
         """Converts a token-list to a property search. Assumes the "property" is already removed."""
         # Error out if tokens haven't been correctly provided.
@@ -251,7 +253,6 @@ class QueryStringParser:
 
         # Write the fields to a new search.
         return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
-
 
     def _cmd_to_window_search(self, cmd_tokens: list[str]) -> text_query.WindowQuery:
         """Converts the given cmd to a window query."""
@@ -279,14 +280,12 @@ class QueryStringParser:
         # Set up the query.
         return text_query.WindowQuery(ante, post)
 
-
     def _cmd_to_section_search(self, cmd_tokens: list[str]) -> text_query.SectionSearch:
         """Builds a section search from the given tokens."""
         if len(cmd_tokens) == 0:
             raise ValueError('Invalid empty section search given. Try "-h search section" for info on this search.')
 
         return text_query.SectionSearch(' '.join(cmd_tokens))
-
 
     def _cmd_to_query(self, cmd: str) -> text_query.TextQuery:
         """Converts a command into a text query."""
@@ -309,10 +308,8 @@ class QueryStringParser:
 
         return result
 
-
     def _is_cmd(self, token: str) -> bool:
         return token not in ['&', '|']
-
 
     def _replace_parens_with_sublists(self, tokens: list[str]) -> list:
         """Replaces tokens containing parentheses into sublists, for easier construction into a tree later."""
@@ -339,7 +336,6 @@ class QueryStringParser:
             i = i + 1
         return result
 
-
     def _argument_to_query(self, arg) -> text_query.TextQuery:
         """Converts the given op argument to a query. This is necessary because the arguments can be of different types:
         a token list, an already-formed query, etc."""
@@ -351,7 +347,6 @@ class QueryStringParser:
             return self._tokens_list_to_query(arg)
         else:
             raise ValueError(f'Syntax: unexpected argument to op, {arg}')
-
 
     def _tokens_list_to_query(self, tokens: list[str]) -> text_query.TextQuery:
         """Converts a list of tokens to a query."""
@@ -389,7 +384,6 @@ class QueryStringParser:
         if 1 != len(no_parens_list):
             raise ValueError("Bug: Something's on fire. Tell Andrew!!!")
         return self._argument_to_query(no_parens_list[0])
-
 
     def to_query(self, command: str) -> text_query.TextQuery:
         """Converts the command into a query."""

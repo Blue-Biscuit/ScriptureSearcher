@@ -215,6 +215,34 @@ def print_help(help_arg: list[str]):
         print(f'Unrecognized help argument: {" ".join(help_arg)}')
 
 
+def assert_same_keys(dict1: dict, dict2: dict):
+    """Asserts that the two dicts have the same keys."""
+    keys1 = dict1.keys()
+    keys2 = dict2.keys()
+
+    if len(keys1) != len(keys2):
+        raise KeyError('Dictionaries do not have the same keys.')
+    for key in keys1:
+        if key not in keys2:
+            raise KeyError('Dictionaries do not have the same keys.')
+    # No need to search through keys2; if all keys1 is in keys2, and the key sets are the same size, then all keys2
+    # must be in keys1.
+
+
+def join_stats(nt_stats: dict, lxx_stats: dict) -> dict:
+    """Joins the two statistics models together so that they can be used in joint searches."""
+    assert_same_keys(nt_stats, lxx_stats)
+
+    joint_stats = {}
+    for key in nt_stats.keys():
+        val_nt = list(nt_stats[key])
+        val_lxx = list(lxx_stats[key])
+
+        joint_stats[key] = val_lxx + val_nt  # Assumes that all fields are lists. But this is valid for now.
+
+    return joint_stats
+
+
 def main_loop(gnt_file, lxx_file):
     """The main program."""
     if len(sys.argv) == 1:
@@ -240,8 +268,15 @@ def main_loop(gnt_file, lxx_file):
             out_format_str = ' '.join(sys.argv[out_idx + 1:])
             del sys.argv[out_idx:]
 
+    # Load NT and LXX statistics and join them together.
+    with open('lxx_stats.json', 'r') as f:
+        lxx_stats = json.load(f)
+    with open('nt_stats.json', 'r') as f:
+        nt_stats = json.load(f)
+    joint_stats = join_stats(nt_stats, lxx_stats)
+
     # Create a search query based upon input.
-    query_parser = query_string_parsing.QueryStringParser()
+    query_parser = query_string_parsing.QueryStringParser(joint_stats)
     args = ' '.join(sys.argv[1:])
     query = query_parser.to_query(args)
 
