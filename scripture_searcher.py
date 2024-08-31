@@ -116,7 +116,7 @@ def print_help(help_arg: list[str]):
         print('\tout\t\t\tPrints help for output.')
     elif 'search' == help_arg[0]:
         if len(help_arg) == 1:
-            print(f'USAGE: {EXECUTABLE_NAME} SEARCH')
+            print(f'USAGE: {EXECUTABLE_NAME} SEARCH_TYPE SEARCH_ARGS [ARGS]')
             print("\tSpecifies the specific search on the New Testament and Septuagint's text.")
             print()
             print('\tThe simplest search would be a simple search for all occurrences of a lexeme, as so:')
@@ -143,6 +143,12 @@ def print_help(help_arg: list[str]):
             print('\t\tlexeme')
             print('\t\tmorphology')
             print('\t\twindow')
+            print()
+            print('\tThere are also certain arguments which are common to all searches, such as specifying Canon')
+            print('\tlocation. These are specified here.')
+            print()
+            print('ARGS:')
+            print('\t--section S Specifies the section in the canon to search. Can be a book name.')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
