@@ -1,4 +1,6 @@
 """Provides functions to build search queries from command strings."""
+from multiprocessing.managers import Value
+
 import text_query
 import enum
 
@@ -279,6 +281,14 @@ def _cmd_to_window_search(cmd_tokens: list[str]) -> text_query.WindowQuery:
     return text_query.WindowQuery(ante, post)
 
 
+def _cmd_to_section_search(cmd_tokens: list[str]) -> text_query.SectionSearch:
+    """Builds a section search from the given tokens."""
+    if len(cmd_tokens) == 0:
+        raise ValueError('Invalid empty section search given. Try "-h search section" for info on this search.')
+
+    return text_query.SectionSearch(' '.join(cmd_tokens))
+
+
 def _cmd_to_query(cmd: str) -> text_query.TextQuery:
     """Converts a command into a text query."""
     cmd_tokens = cmd.split()
@@ -293,6 +303,8 @@ def _cmd_to_query(cmd: str) -> text_query.TextQuery:
         result = _cmd_to_morphology_search(cmd_tokens[1:])
     elif 'window' == search_type:
         result = _cmd_to_window_search(cmd_tokens[1:])
+    elif 'section' == search_type:
+        result = _cmd_to_section_search(cmd_tokens[1:])
     else:
         raise ValueError(f'Syntax: unknown search type, "{search_type}"')
 
