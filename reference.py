@@ -60,6 +60,8 @@ class Reference:
     def __ge__(self, other):
         return self > other or self == other
 
+    def __str__(self):
+        return f'{self.chapter_number}.{self.verse_number}' + self.verse_letter if self.verse_letter is not None else ''
 
     @staticmethod
     def from_str(string: str) -> 'Reference':
@@ -101,7 +103,8 @@ class Reference:
 class CompoundReference:
     """A reference range (so 1.1-2)."""
     def __init__(self, from_ref: Reference, to_ref: Reference):
-        # TODO: check in here to ensure that the references make sense (so from < to)
+        if from_ref >= to_ref:
+            raise ValueError(f'References must be from lesser to greater (found {from_ref}-{to_ref})')
 
         self.from_ref = from_ref
         self.to_ref = to_ref
