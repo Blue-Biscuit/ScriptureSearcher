@@ -129,7 +129,7 @@ class LexemeQuery(WinnowSearch):
         return dataset
 
 
-class MorphologySearch(TextQuery):
+class MorphologySearch(WinnowSearch):
     """Searches by a morphology on the word."""
 
     def __init__(self, property_string: str, value: str):
@@ -139,10 +139,8 @@ class MorphologySearch(TextQuery):
     def __str__(self):
         return f'<Property: {self.property}, {self.value}>'
 
-    def search(self, dataset: list[dict]) -> list[dict]:
-        """Searches the dataset for the presence of a given property."""
-
-        return [x for x in dataset if self.property in x['morph_code'] and x['morph_code'][self.property] == self.value]
+    def winnow(self, x: dict) -> bool:
+        return self.property in x['morph_code'] and x['morph_code'][self.property] == self.value
 
 
 class AnteQuery(TextQuery):
