@@ -386,6 +386,25 @@ def convert_line(row: list[str], idx: int) -> dict:
     return result
 
 
+def to_stats(dataset: list[dict]) -> dict:
+    print('Generating NT statistics...')
+    book_names = []
+    chapter_limits = {}
+    for i, x in enumerate(dataset):
+        book = x['Book']
+        if book not in book_names:
+            book_names.append(book)
+        if i >= len(dataset) - 1 or (book != dataset[i+1]['Book'] or dataset[i]['Chapter'] != dataset[i+1]['Chapter']):
+            if book not in chapter_limits:
+                chapter_limits[book] = {}
+            chapter_limits[book][x['Chapter']] = x['Verse']
+
+    return {
+        'book_names': book_names,
+        'chapter_limits': chapter_limits
+    }
+
+
 def process_file(file):
     """Processes the OpenGNT file."""
     # Do the conversion.
@@ -396,6 +415,10 @@ def process_file(file):
     # Output to a file.
     with open(OUTPUT_FILE_NAME, 'w', encoding='utf-8') as out_f:
         json.dump(gnt_data_json, out_f)
+
+    # Get some statistics on the dataset, so that we can output it.
+    with open('nt_stats.json', 'w', encoding='utf-8') as out_f:
+        json.dump(to_stats(gnt_data_json), out_f)
 
 
 def main():
