@@ -275,8 +275,12 @@ def main_loop(gnt_file, lxx_file):
         nt_stats = json.load(f)
     joint_stats = join_stats(nt_stats, lxx_stats)
 
+    # Load custom canonical sections from the JSON file.
+    with open('sections.json', 'r') as f:
+        sections = json.load(f)
+
     # Create a search query based upon input.
-    query_parser = query_string_parsing.QueryStringParser(joint_stats)
+    query_parser = query_string_parsing.QueryStringParser(joint_stats, sections)
     args = ' '.join(sys.argv[1:])
     query = query_parser.to_query(args)
 

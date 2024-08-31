@@ -23,8 +23,9 @@ class CMDToQueryFSMState(enum.Enum):
 
 class QueryStringParser:
     """Provides a method to parse a command string based upon some options given at construction."""
-    def __init__(self, data_stats: dict):
+    def __init__(self, data_stats: dict, sections: list[dict]):
         self.data_stats = data_stats
+        self.sections = sections
 
     def _tokenize_command_str(self, command: str) -> list[str]:
         tokens = []
