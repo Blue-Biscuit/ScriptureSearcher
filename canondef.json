@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Torah",
+    "texts": [
+      {
+        "book": "Genesis"
+      },
+      {
+        "book": "Exodus"
+      },
+      {
+        "book": "Leviticus"
+      },
+      {
+        "book": "Numbers"
+      },
+      {
+        "book": "Deuteronomy"
+      }
+    ]
+  }
+]
