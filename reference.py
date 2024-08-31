@@ -1,6 +1,9 @@
 """Defines types related to handling chapter/verse references."""
 import re
 
+import helpers
+
+
 def _split_verse_into_num_and_char(verse_string: str) -> (str, str):
     """Splits the given verse number (and ONLY verse number) into a number and char."""
     char_idx = -1
@@ -101,17 +104,29 @@ class Reference:
         return result
 
 class CompoundReference:
-    """A reference range (so 1.1-2)."""
-    def __init__(self, from_ref: Reference, to_ref: Reference):
-        if from_ref >= to_ref:
+    """A reference which may include a destination reference."""
+    def __init__(self, from_ref: Reference, to_ref: Reference = None):
+        if to_ref is not None and from_ref >= to_ref:
             raise ValueError(f'References must be from lesser to greater (found {str(from_ref)}-{str(to_ref)})')
 
         self.from_ref = from_ref
         self.to_ref = to_ref
 
+    def __str__(self):
+        if self.is_range():
+            return f'{str(self.from_ref)}-{self.to_ref}'
+        else:
+            return str(self.from_ref)
+
+    def is_range(self) -> bool:
+        """True if this has a destination."""
+        return self.to_ref is not None
+
     @staticmethod
     def is_compound_reference(string: str) -> bool:
-        """True if the string is the correct format for a compound reference."""
+        """True if the string is the correct format for a compound reference. Note that this does not mean that it
+        is unparsable, as CompoundReference doesn't have to store a destination. CompoundReference can parse everything
+        Reference can."""
         # Ensure that '-' is in the string (it must be for this to be a compound reference)
         if '-' not in string:
             return False
@@ -131,10 +146,13 @@ class CompoundReference:
     @staticmethod
     def from_str(string: str) -> 'CompoundReference':
         """Parses the reference range."""
-        # Assert that this is of the correct format.
+        # If this is not specifically a compound reference, try to parse it as a Reference.
         string = string.strip()
         if not CompoundReference.is_compound_reference(string):
-            raise ValueError(f'Not a valid compound reference: {string}')
+            if not Reference.is_reference(string):
+                raise ValueError(f'Not a valid reference: {string}')
+            ref = Reference.from_str(string)
+            return CompoundReference(ref)
 
         # Parse everything up until the '-' as a regular reference.
         dash_idx = string.index('-')
@@ -157,3 +175,24 @@ class CompoundReference:
             raise ValueError(f'Not a valid compound reference: {string}')
 
         return CompoundReference(from_ref, to_ref)
+
+class BookReference:
+    """A CompoundReference with a book."""
+    def __init__(self, book: str, reference: CompoundReference = None):
+        helpers.assert_non_null(book, 'book')
+        self.book = book
+        self.reference = reference  # Reference can be None; that means the whole book.
+
+    def __str__(self):
+        if self.is_book_reference():
+            return self.book
+        else:
+            return f'{self.book} {str(self.reference)}'
+
+    def is_book_reference(self) -> bool:
+        """True if the reference is just a book."""
+        return self.reference is None
+
+    def is_range(self) -> bool:
+        """True if this reference specifies a range."""
+        return not self.is_book_reference() and self.reference.is_range()

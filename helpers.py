@@ -158,3 +158,9 @@ def get_row_val(field: str, row: list[str]) -> str:
         result = sub_cols[mapped[1]]
 
     return result
+
+
+def assert_non_null(val, val_name: str):
+    """Raises a value error if the value is None."""
+    if val is None:
+        raise ValueError(f'{val_name} was None')
