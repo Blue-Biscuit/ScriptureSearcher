@@ -104,7 +104,7 @@ class CompoundReference:
     """A reference range (so 1.1-2)."""
     def __init__(self, from_ref: Reference, to_ref: Reference):
         if from_ref >= to_ref:
-            raise ValueError(f'References must be from lesser to greater (found {from_ref}-{to_ref})')
+            raise ValueError(f'References must be from lesser to greater (found {str(from_ref)}-{str(to_ref)})')
 
         self.from_ref = from_ref
         self.to_ref = to_ref
