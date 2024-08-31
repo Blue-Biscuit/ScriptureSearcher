@@ -143,6 +143,16 @@ class MorphologySearch(WinnowSearch):
         return self.property in x['morph_code'] and x['morph_code'][self.property] == self.value
 
 
+class SectionSearch(WinnowSearch):
+    """Winnows down the input to a particular canonical section."""
+    def __init__(self, section: str):
+        self.section = section
+
+    def winnow(self, x: dict) -> bool:
+        # the section is a book for now.
+        return x['Book'] == self.section
+
+
 class AnteQuery(TextQuery):
     """Gets all terms a certain number of terms before the input term."""
 
