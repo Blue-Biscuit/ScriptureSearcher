@@ -285,6 +285,10 @@ class QueryStringParser:
         if len(cmd_tokens) == 0:
             raise ValueError('Invalid empty section search given. Try "-h search section" for info on this search.')
 
+        selection = ' '.join(cmd_tokens)
+        if selection not in self.data_stats['book_names']:
+            raise ValueError(f'Not a book in the LXX or NT: {selection}')
+
         return text_query.SectionSearch(' '.join(cmd_tokens))
 
     def _cmd_to_query(self, cmd: str) -> text_query.TextQuery:
