@@ -12,6 +12,7 @@ _script_dir_path = os.path.dirname(os.path.abspath(sys.argv[0]))
 _proj_root = f'{_script_dir_path}/..'
 INPUT_FILE_NAME = f'{_proj_root}/OpenGNT/OpenGNT_version3_3.csv'
 OUTPUT_FILE_NAME = f'{_proj_root}/generation/opengnt.json'
+OUTPUT_STATS = f'{_proj_root}/generation/nt_stats.json'
 
 OPENGNT_FIELDS = [
         "OGNTsort",
@@ -82,25 +83,25 @@ def interpret_book_code(code: int):
         'John',
         'Acts',
         'Romans',
-        '1 Corinthians',
-        '2 Corinthians',
+        '1Corinthians',
+        '2Corinthians',
         'Galatians',
         'Ephesians',
         'Philippians',
         'Colossians',
-        '1 Thessalonians',
-        '2 Thessalonians',
-        '1 Timothy',
-        '2 Timothy',
+        '1Thessalonians',
+        '2Thessalonians',
+        '1Timothy',
+        '2Timothy',
         'Titus',
         'Philemon',
         'Hebrews',
         'James',
-        '1 Peter',
-        '2 Peter',
-        '1 John',
-        '2 John',
-        '3 John',
+        '1Peter',
+        '2Peter',
+        '1John',
+        '2John',
+        '3John',
         'Jude',
         'Revelation'
     ]
@@ -391,16 +392,41 @@ def convert_line(row: list[str], idx: int) -> dict:
     return result
 
 
+def to_stats(dataset: list[dict]) -> dict:
+    book_names = []
+    chapter_limits = {}
+    for i, x in enumerate(dataset):
+        book = x['Book']
+        if book not in book_names:
+            book_names.append(book)
+        if i >= len(dataset) - 1 or (book != dataset[i+1]['Book'] or dataset[i]['Chapter'] != dataset[i+1]['Chapter']):
+            if book not in chapter_limits:
+                chapter_limits[book] = {}
+            chapter_limits[book][x['Chapter']] = x['Verse']
+
+    return {
+        'book_names': book_names,
+        'chapter_limits': chapter_limits
+    }
+
+
 def process_file(file):
     """Processes the OpenGNT file."""
     # Do the conversion.
+    print('Loading dataset as JSON...')
     reader = csv.reader(file, delimiter='\t')
     next(reader)  # Skip the first line (the table header)
     gnt_data_json = [convert_line(x, idx) for idx, x in enumerate(reader)]
 
     # Output to a file.
+    print('Outputing to file...')
     with open(OUTPUT_FILE_NAME, 'w', encoding='utf-8') as out_f:
         json.dump(gnt_data_json, out_f)
+
+    # Get some statistics on the dataset, so that we can output it.
+    print('Dumping statistics...')
+    with open(OUTPUT_STATS, 'w', encoding='utf-8') as out_f:
+        json.dump(to_stats(gnt_data_json), out_f)
 
 
 def main():

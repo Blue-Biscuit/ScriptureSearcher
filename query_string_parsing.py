@@ -1,6 +1,8 @@
 """Provides functions to build search queries from command strings."""
 import text_query
 import enum
+import reference
+from reference import BookReference
 
 
 class TokenizerFSMState(enum.Enum):
@@ -8,80 +10,6 @@ class TokenizerFSMState(enum.Enum):
     DEFAULT_STATE = 1,
     PARSING_AND = 2,
     PARSING_OR = 3
-
-
-def _tokenize_command_str(command: str) -> list[str]:
-    tokens = []
-    paren_depth = 0
-    state = TokenizerFSMState.DEFAULT_STATE
-
-    command_str = ''
-
-    # Parse the command with a finite-state machine.
-    idx = 0
-    while idx < len(command):
-        if state == TokenizerFSMState.DEFAULT_STATE:
-            char = command[idx]
-
-            if '(' == char or '[' == char:
-                tokens.append(f'({paren_depth}')
-                paren_depth = paren_depth + 1
-                idx = idx + 1
-            elif ')' == char or ']' == char:
-                paren_depth = paren_depth - 1
-                if paren_depth < 0:
-                    raise ValueError('Invalid parentheses in string.')
-                tokens.append(f'){paren_depth}')
-                idx = idx + 1
-            elif char.isspace():
-                idx = idx + 1
-
-            else:  # Otherwise, this is a command, or AND/OR.
-                state = TokenizerFSMState.PARSING_COMMAND
-
-        elif TokenizerFSMState.PARSING_COMMAND == state:
-            char = command[idx]
-            if char in '()[]':  # If found a special character, return to that parsing state.
-                state = TokenizerFSMState.DEFAULT_STATE
-                tokens.append(command_str.strip())
-                command_str = ''
-            else:
-                command_str = f'{command_str}{char}'
-                idx = idx + 1
-
-                # If the last word of input has been an AND or an OR, then this is no longer / has never been a command,
-                # but is an AND or an OR.
-                stripped = command_str.strip()
-                split = command_str.split()
-                if stripped == 'and':
-                    tokens.append('&')
-                    command_str = ''
-                    state = TokenizerFSMState.DEFAULT_STATE
-                    idx = idx + 1
-                elif stripped == 'or':
-                    tokens.append('|')
-                    command_str = ''
-                    state = TokenizerFSMState.DEFAULT_STATE
-                    idx = idx + 1
-                elif split[-1] == 'and':
-                    tokens.append(' '.join(split[0:len(split)-1]))
-                    command_str = ''
-                    tokens.append('&')
-                    state = TokenizerFSMState.DEFAULT_STATE
-                    idx = idx + 1
-                elif split[-1] == 'or':
-                    tokens.append(' '.join(split[0:len(split)-1]))
-                    command_str = ''
-                    tokens.append('|')
-                    state = TokenizerFSMState.DEFAULT_STATE
-                    idx = idx + 1
-
-    if paren_depth != 0:
-        raise ValueError('Invalid parentheses in string.')
-    if command_str != '':
-        tokens.append(command_str)
-
-    return tokens
 
 
 class CMDToQueryFSMState(enum.Enum):
@@ -95,298 +23,423 @@ class CMDToQueryFSMState(enum.Enum):
     PARSING_PERSON = 7
 
 
-def _cmd_to_lexeme_search(cmd_tokens: list[str]) -> text_query.LexemeQuery:
-    """Converts the given string into a lexeme search."""
-    # Error out if tokens is empty.
-    if len(cmd_tokens) == 0:
-        raise ValueError('Syntax: no arguments given to search type "lexeme"; See arguments with "-h search lexeme"')
+class QueryStringParser:
+    """Provides a method to parse a command string based upon some options given at construction."""
+    def __init__(self, data_stats: dict, sections: dict):
+        self.data_stats = data_stats
+        self.sections = sections
 
-    # The first token will always be the lexeme, so just remove it off-the-top.
-    lexeme = cmd_tokens[0]
-    cmd_tokens = cmd_tokens[1:]
+    def _tokenize_command_str(self, command: str) -> list[str]:
+        tokens = []
+        paren_depth = 0
+        state = TokenizerFSMState.DEFAULT_STATE
 
-    # Declare the fields which may be written.
-    case = None
-    number = None
-    gender = None
-    tense = None
-    voice = None
-    mood = None
-    person = None
+        command_str = ''
 
-    state = CMDToQueryFSMState.DEFAULT_STATE
-    i = 0
-    while i < len(cmd_tokens):
-        token = cmd_tokens[i]
-        # Default case
-        if CMDToQueryFSMState.DEFAULT_STATE == state:
-            if '--case' == token:
-                state = CMDToQueryFSMState.PARSING_CASE
+        # Parse the command with a finite-state machine.
+        idx = 0
+        while idx < len(command):
+            if state == TokenizerFSMState.DEFAULT_STATE:
+                char = command[idx]
+
+                if '(' == char or '[' == char:
+                    tokens.append(f'({paren_depth}')
+                    paren_depth = paren_depth + 1
+                    idx = idx + 1
+                elif ')' == char or ']' == char:
+                    paren_depth = paren_depth - 1
+                    if paren_depth < 0:
+                        raise ValueError('Invalid parentheses in string.')
+                    tokens.append(f'){paren_depth}')
+                    idx = idx + 1
+                elif char.isspace():
+                    idx = idx + 1
+
+                else:  # Otherwise, this is a command, or AND/OR.
+                    state = TokenizerFSMState.PARSING_COMMAND
+
+            elif TokenizerFSMState.PARSING_COMMAND == state:
+                char = command[idx]
+                if char in '()[]':  # If found a special character, return to that parsing state.
+                    state = TokenizerFSMState.DEFAULT_STATE
+                    tokens.append(command_str.strip())
+                    command_str = ''
+                else:
+                    command_str = f'{command_str}{char}'
+                    idx = idx + 1
+
+                    # If the last word of input has been an AND or an OR, then this is no longer / has never been a command,
+                    # but is an AND or an OR.
+                    stripped = command_str.strip()
+                    split = command_str.split()
+                    if stripped == 'and':
+                        tokens.append('&')
+                        command_str = ''
+                        state = TokenizerFSMState.DEFAULT_STATE
+                        idx = idx + 1
+                    elif stripped == 'or':
+                        tokens.append('|')
+                        command_str = ''
+                        state = TokenizerFSMState.DEFAULT_STATE
+                        idx = idx + 1
+                    elif split[-1] == 'and':
+                        tokens.append(' '.join(split[0:len(split)-1]))
+                        command_str = ''
+                        tokens.append('&')
+                        state = TokenizerFSMState.DEFAULT_STATE
+                        idx = idx + 1
+                    elif split[-1] == 'or':
+                        tokens.append(' '.join(split[0:len(split)-1]))
+                        command_str = ''
+                        tokens.append('|')
+                        state = TokenizerFSMState.DEFAULT_STATE
+                        idx = idx + 1
+
+        if paren_depth != 0:
+            raise ValueError('Invalid parentheses in string.')
+        if command_str != '':
+            tokens.append(command_str)
+
+        return tokens
+
+    def _cmd_to_lexeme_search(self, cmd_tokens: list[str]) -> text_query.LexemeQuery:
+        """Converts the given string into a lexeme search."""
+        # Error out if tokens is empty.
+        if len(cmd_tokens) == 0:
+            raise ValueError('Syntax: no arguments given to search type "lexeme"; See arguments with "-h search lexeme"')
+
+        # The first token will always be the lexeme, so just remove it off-the-top.
+        lexeme = cmd_tokens[0]
+        cmd_tokens = cmd_tokens[1:]
+
+        # Declare the fields which may be written.
+        case = None
+        number = None
+        gender = None
+        tense = None
+        voice = None
+        mood = None
+        person = None
+
+        state = CMDToQueryFSMState.DEFAULT_STATE
+        i = 0
+        while i < len(cmd_tokens):
+            token = cmd_tokens[i]
+            # Default case
+            if CMDToQueryFSMState.DEFAULT_STATE == state:
+                if '--case' == token:
+                    state = CMDToQueryFSMState.PARSING_CASE
+                    i = i + 1
+                elif '--number' == token:
+                    state = CMDToQueryFSMState.PARSING_NUMBER
+                    i = i + 1
+                elif '--gender' == token:
+                    state = CMDToQueryFSMState.PARSING_GENDER
+                    i = i + 1
+                elif '--tense' == token:
+                    state = CMDToQueryFSMState.PARSING_TENSE
+                    i = i + 1
+                elif '--voice' == token:
+                    state = CMDToQueryFSMState.PARSING_VOICE
+                    i = i + 1
+                elif '--mood' == token:
+                    state = CMDToQueryFSMState.PARSING_MOOD
+                    i = i + 1
+                elif '--person' == token:
+                    state = CMDToQueryFSMState.PARSING_PERSON
+                    i = i + 1
+                else:  # Invalid token
+                    raise ValueError(f'Syntax: invalid search token, "{token}"')
+            # Parsing case
+            elif CMDToQueryFSMState.PARSING_CASE == state:
+                if case is not None:
+                    raise ValueError('Syntax: cannot define case twice')
+                if token not in ['nominative', 'genitive', 'dative', 'accusative']:
+                    raise ValueError(f'Value: not a case, "{token}"')
+                case = token
                 i = i + 1
-            elif '--number' == token:
-                state = CMDToQueryFSMState.PARSING_NUMBER
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing number
+            elif CMDToQueryFSMState.PARSING_NUMBER == state:
+                if number is not None:
+                    raise ValueError('Syntax: cannot define number twice')
+                if token not in ['singular', 'plural', 'dual']:
+                    raise ValueError(f'Value: not a number, "{token}"')
+                number = token
                 i = i + 1
-            elif '--gender' == token:
-                state = CMDToQueryFSMState.PARSING_GENDER
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing gender
+            elif CMDToQueryFSMState.PARSING_GENDER == state:
+                if gender is not None:
+                    raise ValueError('Syntax: cannot define gender twice')
+                if token not in ['masculine', 'feminine', 'neuter']:
+                    raise ValueError(f'Value: not a gender, "{token}"')
+                gender = token
                 i = i + 1
-            elif '--tense' == token:
-                state = CMDToQueryFSMState.PARSING_TENSE
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing tense
+            elif CMDToQueryFSMState.PARSING_TENSE == state:
+                if tense is not None:
+                    raise ValueError('Syntax: cannot define tense twice')
+                if token not in ['present', 'imperfect', 'aorist', 'perfect', 'future', 'pluperfect']:
+                    raise ValueError(f'Value: not a tense, "{token}"')
+                tense = token
                 i = i + 1
-            elif '--voice' == token:
-                state = CMDToQueryFSMState.PARSING_VOICE
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing voice
+            elif CMDToQueryFSMState.PARSING_VOICE == state:
+                if voice is not None:
+                    raise ValueError('Syntax: cannot define tense twice')
+                if token not in ['active', 'middle', 'passive']:
+                    raise ValueError(f'Value: not a voice, "{token}"')
+                voice = token
                 i = i + 1
-            elif '--mood' == token:
-                state = CMDToQueryFSMState.PARSING_MOOD
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing mood
+            elif CMDToQueryFSMState.PARSING_MOOD == state:
+                if mood is not None:
+                    raise ValueError('Syntax: cannot define tense twice')
+                if token not in ['indicative', 'imperative', 'participle', 'infinitive', 'subjunctive', 'optative']:
+                    raise ValueError(f'Value: not a mood, "{token}"')
+                mood = token
                 i = i + 1
-            elif '--person' == token:
-                state = CMDToQueryFSMState.PARSING_PERSON
+                state = CMDToQueryFSMState.DEFAULT_STATE
+            # Parsing person
+            elif CMDToQueryFSMState.PARSING_PERSON == state:
+                if person is not None:
+                    raise ValueError('Syntax: cannot define tense twice')
+                if token not in ['first', 'second', 'third']:
+                    raise ValueError(f'Value: not a person, "{token}"')
+                person = token
                 i = i + 1
-            else:  # Invalid token
-                raise ValueError(f'Syntax: invalid search token, "{token}"')
-        # Parsing case
-        elif CMDToQueryFSMState.PARSING_CASE == state:
-            if case is not None:
-                raise ValueError('Syntax: cannot define case twice')
-            if token not in ['nominative', 'genitive', 'dative', 'accusative']:
-                raise ValueError(f'Value: not a case, "{token}"')
-            case = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing number
-        elif CMDToQueryFSMState.PARSING_NUMBER == state:
-            if number is not None:
-                raise ValueError('Syntax: cannot define number twice')
-            if token not in ['singular', 'plural', 'dual']:
-                raise ValueError(f'Value: not a number, "{token}"')
-            number = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing gender
-        elif CMDToQueryFSMState.PARSING_GENDER == state:
-            if gender is not None:
-                raise ValueError('Syntax: cannot define gender twice')
-            if token not in ['masculine', 'feminine', 'neuter']:
-                raise ValueError(f'Value: not a gender, "{token}"')
-            gender = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing tense
-        elif CMDToQueryFSMState.PARSING_TENSE == state:
-            if tense is not None:
-                raise ValueError('Syntax: cannot define tense twice')
-            if token not in ['present', 'imperfect', 'aorist', 'perfect', 'future', 'pluperfect']:
-                raise ValueError(f'Value: not a tense, "{token}"')
-            tense = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing voice
-        elif CMDToQueryFSMState.PARSING_VOICE == state:
-            if voice is not None:
-                raise ValueError('Syntax: cannot define tense twice')
-            if token not in ['active', 'middle', 'passive']:
-                raise ValueError(f'Value: not a voice, "{token}"')
-            voice = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing mood
-        elif CMDToQueryFSMState.PARSING_MOOD == state:
-            if mood is not None:
-                raise ValueError('Syntax: cannot define tense twice')
-            if token not in ['indicative', 'imperative', 'participle', 'infinitive', 'subjunctive', 'optative']:
-                raise ValueError(f'Value: not a mood, "{token}"')
-            mood = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
-        # Parsing person
-        elif CMDToQueryFSMState.PARSING_PERSON == state:
-            if person is not None:
-                raise ValueError('Syntax: cannot define tense twice')
-            if token not in ['first', 'second', 'third']:
-                raise ValueError(f'Value: not a person, "{token}"')
-            person = token
-            i = i + 1
-            state = CMDToQueryFSMState.DEFAULT_STATE
+                state = CMDToQueryFSMState.DEFAULT_STATE
 
-    # Error out if we ended in an invalid state.
-    if state == CMDToQueryFSMState.PARSING_CASE:
-        raise ValueError('Syntax: lacking argument to --case')
-    elif state == CMDToQueryFSMState.PARSING_NUMBER:
-        raise ValueError('Syntax: lacking argument to --number')
-    elif state == CMDToQueryFSMState.PARSING_GENDER:
-        raise ValueError('Syntax: lacking argument to --gender')
-    elif state == CMDToQueryFSMState.PARSING_TENSE:
-        raise ValueError('Syntax: lacking argument to --tense')
-    elif state == CMDToQueryFSMState.PARSING_VOICE:
-        raise ValueError('Syntax: lacking argument to --voice')
-    elif state == CMDToQueryFSMState.PARSING_MOOD:
-        raise ValueError('Syntax: lacking argument to --mood')
-    elif state == CMDToQueryFSMState.PARSING_PERSON:
-        raise ValueError('Syntax: lacking argument to --person')
+        # Error out if we ended in an invalid state.
+        if state == CMDToQueryFSMState.PARSING_CASE:
+            raise ValueError('Syntax: lacking argument to --case')
+        elif state == CMDToQueryFSMState.PARSING_NUMBER:
+            raise ValueError('Syntax: lacking argument to --number')
+        elif state == CMDToQueryFSMState.PARSING_GENDER:
+            raise ValueError('Syntax: lacking argument to --gender')
+        elif state == CMDToQueryFSMState.PARSING_TENSE:
+            raise ValueError('Syntax: lacking argument to --tense')
+        elif state == CMDToQueryFSMState.PARSING_VOICE:
+            raise ValueError('Syntax: lacking argument to --voice')
+        elif state == CMDToQueryFSMState.PARSING_MOOD:
+            raise ValueError('Syntax: lacking argument to --mood')
+        elif state == CMDToQueryFSMState.PARSING_PERSON:
+            raise ValueError('Syntax: lacking argument to --person')
 
-    # Construct the final query.
-    query = text_query.LexemeQuery(lexeme)
-    query.case = case
-    query.number = number
-    query.gender = gender
-    query.tense = tense
-    query.voice = voice
-    query.mood = mood
-    query.person = person
+        # Construct the final query.
+        query = text_query.LexemeQuery(lexeme)
+        query.case = case
+        query.number = number
+        query.gender = gender
+        query.tense = tense
+        query.voice = voice
+        query.mood = mood
+        query.person = person
 
-    return query
+        return query
+
+    def _cmd_to_morphology_search(self, cmd_tokens: list[str]) -> text_query.MorphologySearch:
+        """Converts a token-list to a property search. Assumes the "property" is already removed."""
+        # Error out if tokens haven't been correctly provided.
+        if len(cmd_tokens) == 0:
+            raise ValueError(
+                'Syntax: no arguments given to search type "property"; See arguments with "-h search property".'
+            )
+        if len(cmd_tokens) == 1:
+            raise ValueError(
+                f'Syntax: no value provided to check against the "{cmd_tokens[0]}" property.'
+            )
+
+        # Write the fields to a new search.
+        return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
+
+    def _cmd_to_window_search(self, cmd_tokens: list[str]) -> text_query.WindowQuery:
+        """Converts the given cmd to a window query."""
+        # Do error checking on everything.
+        if len(cmd_tokens) == 0:
+            raise ValueError(
+                'Syntax: no arguments given to search type "window"; See arguments with "-h search window".'
+            )
+        if len(cmd_tokens) == 1:
+            raise ValueError(
+                'Syntax: no value provided to for POST'
+            )
+        try:
+            ante = int(cmd_tokens[0])
+            post = int(cmd_tokens[1])
+        except ValueError:
+            raise ValueError(
+                'Syntax: arguments to ANTE and POST must integers.'
+            )
+        if ante < 0 or post < 0:
+            raise ValueError(
+                'Syntax: arguments to ANTE and POST must be positive.'
+            )
+
+        # Set up the query.
+        return text_query.WindowQuery(ante, post)
+
+    def _create_selection_search_args(self, cmd_tokens: list[str]) -> list[reference.BookReference]:
+        """Takes the arguments given to a selection search and converts them into raw materials which then
+        the SelectionSearch knows how to use."""
+        result = []
 
 
-def _cmd_to_morphology_search(cmd_tokens: list[str]) -> text_query.MorphologySearch:
-    """Converts a token-list to a property search. Assumes the "property" is already removed."""
-    # Error out if tokens haven't been correctly provided.
-    if len(cmd_tokens) == 0:
-        raise ValueError(
-            'Syntax: no arguments given to search type "property"; See arguments with "-h search property".'
-        )
-    if len(cmd_tokens) == 1:
-        raise ValueError(
-            f'Syntax: no value provided to check against the "{cmd_tokens[0]}" property.'
-        )
+        for i, token in enumerate(cmd_tokens):
+            # If we stumble upon a custom canon section, add its contents to the result. Error if the next is a
+            # reference.
+            next_is_token = (i != len(cmd_tokens) - 1
+                             and (reference.Reference.is_reference(cmd_tokens[i+1])
+                                  or reference.CompoundReference.is_compound_reference(cmd_tokens[i+1])))
+            if token in self.sections:
+                if next_is_token:
+                    raise ValueError(f'Reference cannot follow custom canonical section: "{token} {token[i+1]}"')
+                result.extend(self.sections[token])
 
-    # Write the fields to a new search.
-    return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
+            # If we stumble upon a book name, and the next is not a reference, then add it.
+            elif token in self.data_stats['book_names']:
+                if not next_is_token:
+                    result.append(BookReference(token))
 
+            # If we stumble upon a reference, add it, with the previous book name, to the result.
+            elif reference.Reference.is_reference(token) or reference.CompoundReference.is_compound_reference(token):
+                # If this is the first value, then error out, because we can't join it to the previous.
+                if i == 0:
+                    raise ValueError('Reference does not make sense without a book.')
 
-def _cmd_to_window_search(cmd_tokens: list[str]) -> text_query.WindowQuery:
-    """Converts the given cmd to a window query."""
-    # Do error checking on everything.
-    if len(cmd_tokens) == 0:
-        raise ValueError(
-            'Syntax: no arguments given to search type "window"; See arguments with "-h search window".'
-        )
-    if len(cmd_tokens) == 1:
-        raise ValueError(
-            'Syntax: no value provided to for POST'
-        )
-    try:
-        ante = int(cmd_tokens[0])
-        post = int(cmd_tokens[1])
-    except ValueError:
-        raise ValueError(
-            'Syntax: arguments to ANTE and POST must integers.'
-        )
-    if ante < 0 or post < 0:
-        raise ValueError(
-            'Syntax: arguments to ANTE and POST must be positive.'
-        )
+                # Ensure that the previous value is a book.
+                prev_value = cmd_tokens[i-1]
+                if prev_value not in self.data_stats['book_names']:
+                    raise ValueError(f'Cannot append reference to non-book: {prev_value}')
 
-    # Set up the query.
-    return text_query.WindowQuery(ante, post)
+                # Otherwise, join this to the previous and remove the current item.
+                reference_string = f'{cmd_tokens[i-1]} {token}'
+                result.append(reference.BookReference.from_str(reference_string))
 
+            # If we stumble across anything else, error out.
+            else:
+                raise ValueError(f'Invalid token: "{token}"')
 
-def _cmd_to_query(cmd: str) -> text_query.TextQuery:
-    """Converts a command into a text query."""
-    cmd_tokens = cmd.split()
-    if 0 == len(cmd_tokens):
-        raise ValueError('Invalid empty command given.')
+        return result
 
-    # Parse the different types of searches.
-    search_type = cmd_tokens[0]
-    if 'lexeme' == search_type:
-        result = _cmd_to_lexeme_search(cmd_tokens[1:])
-    elif 'morphology' == search_type:
-        result = _cmd_to_morphology_search(cmd_tokens[1:])
-    elif 'window' == search_type:
-        result = _cmd_to_window_search(cmd_tokens[1:])
-    else:
-        raise ValueError(f'Syntax: unknown search type, "{search_type}"')
+    def _cmd_to_section_search(self, cmd_tokens: list[str]) -> text_query.SectionSearch:
+        """Builds a section search from the given tokens."""
+        if len(cmd_tokens) == 0:
+            raise ValueError('Invalid empty section search given. Try "-h search section" for info on this search.')
 
-    return result
+        selection_search_args = self._create_selection_search_args(cmd_tokens)
+        return text_query.SectionSearch(selection_search_args)
 
+    def _cmd_to_query(self, cmd: str) -> text_query.TextQuery:
+        """Converts a command into a text query."""
+        cmd_tokens = cmd.split()
+        if 0 == len(cmd_tokens):
+            raise ValueError('Invalid empty command given.')
 
-def _is_cmd(token: str) -> bool:
-    return token not in ['&', '|']
-
-
-def _replace_parens_with_sublists(tokens: list[str]) -> list:
-    """Replaces tokens containing parentheses into sublists, for easier construction into a tree later."""
-    result = []
-    i = 0
-    while i < len(tokens):
-        token = tokens[i]
-        if type(token) is str and token.startswith('('):
-            paren_num = int(token[1:])
-            closing_paren_str = f'){paren_num}'
-            j = i
-            while j < len(tokens):
-                if tokens[j] == closing_paren_str:
-                    if i + 1 == j:
-                        raise ValueError('Syntax: cannot have empty parentheses.')
-                    sub_tokens = tokens[i + 1:j]
-                    sub_query = _replace_parens_with_sublists(sub_tokens)
-                    result.append(sub_query)
-                    i = j
-                    break
-                j = j + 1
+        # Parse the different types of searches.
+        search_type = cmd_tokens[0]
+        if 'lexeme' == search_type:
+            result = self._cmd_to_lexeme_search(cmd_tokens[1:])
+        elif 'morphology' == search_type:
+            result = self._cmd_to_morphology_search(cmd_tokens[1:])
+        elif 'window' == search_type:
+            result = self._cmd_to_window_search(cmd_tokens[1:])
+        elif 'section' == search_type:
+            result = self._cmd_to_section_search(cmd_tokens[1:])
         else:
-            result.append(token)
-        i = i + 1
-    return result
+            raise ValueError(f'Syntax: unknown search type, "{search_type}"')
 
+        return result
 
-def _argument_to_query(arg) -> text_query.TextQuery:
-    """Converts the given op argument to a query. This is necessary because the arguments can be of different types:
-    a token list, an already-formed query, etc."""
-    if issubclass(type(arg), text_query.TextQuery):
-        return arg
-    elif type(arg) is str and _is_cmd(arg):
-        return _cmd_to_query(arg)
-    elif type(arg) is list:
-        return _tokens_list_to_query(arg)
-    else:
-        raise ValueError(f'Syntax: unexpected argument to op, {arg}')
+    def _is_cmd(self, token: str) -> bool:
+        return token not in ['&', '|']
 
+    def _replace_parens_with_sublists(self, tokens: list[str]) -> list:
+        """Replaces tokens containing parentheses into sublists, for easier construction into a tree later."""
+        result = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            if type(token) is str and token.startswith('('):
+                paren_num = int(token[1:])
+                closing_paren_str = f'){paren_num}'
+                j = i
+                while j < len(tokens):
+                    if tokens[j] == closing_paren_str:
+                        if i + 1 == j:
+                            raise ValueError('Syntax: cannot have empty parentheses.')
+                        sub_tokens = tokens[i + 1:j]
+                        sub_query = self._replace_parens_with_sublists(sub_tokens)
+                        result.append(sub_query)
+                        i = j
+                        break
+                    j = j + 1
+            else:
+                result.append(token)
+            i = i + 1
+        return result
 
-def _tokens_list_to_query(tokens: list[str]) -> text_query.TextQuery:
-    """Converts a list of tokens to a query."""
+    def _argument_to_query(self, arg) -> text_query.TextQuery:
+        """Converts the given op argument to a query. This is necessary because the arguments can be of different types:
+        a token list, an already-formed query, etc."""
+        if issubclass(type(arg), text_query.TextQuery):
+            return arg
+        elif type(arg) is str and self._is_cmd(arg):
+            return self._cmd_to_query(arg)
+        elif type(arg) is list:
+            return self._tokens_list_to_query(arg)
+        else:
+            raise ValueError(f'Syntax: unexpected argument to op, {arg}')
 
-    # Get rid of the parentheses, for easier processing.
-    no_parens_list = _replace_parens_with_sublists(tokens)
+    def _tokens_list_to_query(self, tokens: list[str]) -> text_query.TextQuery:
+        """Converts a list of tokens to a query."""
 
-    # Recursively call this function on the arguments of ANDs
-    and_occurrences = [i for i, x in enumerate(no_parens_list) if '&' == x]
-    for i in reversed(and_occurrences):
-        # We loop backwards because we want to construct our objects in such a way that the leftmost is on the top
-        # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
-        if i == 0 or i == len(no_parens_list):
-            raise ValueError('Syntax: no argument to &.')
-        lhs = _argument_to_query(no_parens_list[i-1])
-        rhs = _argument_to_query(no_parens_list[i+1])
-        and_query = text_query.AndQuery(lhs, rhs)
-        del no_parens_list[i-1:i+2]
-        no_parens_list.insert(i-1, and_query)
+        # Get rid of the parentheses, for easier processing.
+        no_parens_list = self._replace_parens_with_sublists(tokens)
 
-    # Recursively call this function on the arguments of ORs
-    or_occurrences = [i for i, x in enumerate(no_parens_list) if '|' == x]
-    for i in reversed(or_occurrences):
-        # We loop backwards because we want to construct our objects in such a way that the leftmost is on the top
-        # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
-        if i == 0 or i == len(no_parens_list):
-            raise ValueError('Syntax: no argument to &.')
-        lhs = _argument_to_query(no_parens_list[i - 1])
-        rhs = _argument_to_query(no_parens_list[i + 1])
-        and_query = text_query.OrQuery(lhs, rhs)
-        del no_parens_list[i - 1:i + 2]
-        no_parens_list.insert(i - 1, and_query)
+        # Recursively call this function on the arguments of ANDs
+        and_occurrences = [i for i, x in enumerate(no_parens_list) if '&' == x]
+        for i in reversed(and_occurrences):
+            # We loop backwards because we want to construct our objects in such a way that the leftmost is on the top
+            # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
+            if i == 0 or i == len(no_parens_list):
+                raise ValueError('Syntax: no argument to &.')
+            lhs = self._argument_to_query(no_parens_list[i-1])
+            rhs = self._argument_to_query(no_parens_list[i+1])
+            and_query = text_query.AndQuery(lhs, rhs)
+            del no_parens_list[i-1:i+2]
+            no_parens_list.insert(i-1, and_query)
 
-    # This should never happen at this point, but if there's more than one element in the list, we've hit an error.
-    if 1 != len(no_parens_list):
-        raise ValueError("Bug: Something's on fire. Tell Andrew!!!")
-    return _argument_to_query(no_parens_list[0])
+        # Recursively call this function on the arguments of ORs
+        or_occurrences = [i for i, x in enumerate(no_parens_list) if '|' == x]
+        for i in reversed(or_occurrences):
+            # We loop backwards because we want to construct our objects in such a way that the leftmost is on the top
+            # of the tree. Also, because we're moving backwards, we can retain our indices without corrupting the list.
+            if i == 0 or i == len(no_parens_list):
+                raise ValueError('Syntax: no argument to &.')
+            lhs = self._argument_to_query(no_parens_list[i - 1])
+            rhs = self._argument_to_query(no_parens_list[i + 1])
+            and_query = text_query.OrQuery(lhs, rhs)
+            del no_parens_list[i - 1:i + 2]
+            no_parens_list.insert(i - 1, and_query)
 
+        # This should never happen at this point, but if there's more than one element in the list, we've hit an error.
+        if 1 != len(no_parens_list):
+            raise ValueError("Bug: Something's on fire. Tell Andrew!!!")
+        return self._argument_to_query(no_parens_list[0])
 
-def to_query(command: str) -> text_query.TextQuery:
-    """Converts the command into a query."""
-    # Get the tokens in the command string.
-    tokens = _tokenize_command_str(command)
-    return _tokens_list_to_query(tokens)
+    def to_query(self, command: str) -> text_query.TextQuery:
+        """Converts the command into a query."""
+        # Get the tokens in the command string.
+        tokens = self._tokenize_command_str(command)
+        return self._tokens_list_to_query(tokens)
 
 
 if __name__ == '__main__':
     # Test tokenizer.
-    print(to_query('(please work | λογος) | αληθινος & ((ρημα & lmao) | lol)'))
+    parser = QueryStringParser()
+    print(parser.to_query('(please work | λογος) | αληθινος & ((ρημα & lmao) | lol)'))

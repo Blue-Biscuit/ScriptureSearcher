@@ -12,6 +12,7 @@ _proj_root = f'{_script_dir_path}/..'
 _gen_path = f'{_proj_root}/generation'
 _lxx_path = f'{_proj_root}/LXX-Rahlfs-1935'
 OUT_FILE = f'{_gen_path}/lxx.json'
+OUT_STATS = f'{_gen_path}/lxx_stats.json'
 PATH_TO_LEXEMES = f'{_lxx_path}/12-Marvel.Bible/09-lexemes.csv'
 PATH_TO_VERSIFICATION = f'{_lxx_path}/08_versification/ossp/versification_original.csv'
 PATH_TO_MORPHOLOGY = f'{_lxx_path}/03a_morphology_with_JTauber_patches/patched_623693.csv'
@@ -324,6 +325,24 @@ def interpret_morphology(lxx_data: list[dict]):
         word['morph_code'] = result
 
 
+def to_stats(dataset: list[dict]) -> dict:
+    book_names = []
+    chapter_limits = {}
+    for i, x in enumerate(dataset):
+        book = x['Book']
+        if book not in book_names:
+            book_names.append(book)
+        if i >= len(dataset) - 1 or (book != dataset[i+1]['Book'] or dataset[i]['Chapter'] != dataset[i+1]['Chapter']):
+            if book not in chapter_limits:
+                chapter_limits[book] = {}
+            chapter_limits[book][x['Chapter']] = x['Verse']
+
+    return {
+        'book_names': book_names,
+        'chapter_limits': chapter_limits
+    }
+
+
 def main():
     """The main routine."""
     # Initialize the dataset with just word indices. BEWARE! The actual dataset
@@ -359,6 +378,11 @@ def main():
     print('Writing result...')
     with open(OUT_FILE, 'w') as f:
         json.dump(lxx_data, f)
+
+    # Dump statistics.
+    print('Writing statistics...')
+    with open(OUT_STATS, 'w') as f:
+        json.dump(to_stats(lxx_data), f)
 
     print('Done!')
 

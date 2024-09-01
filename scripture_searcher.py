@@ -4,6 +4,7 @@ to help further biblical studies."""
 import json
 import sys
 import query_string_parsing
+import reference
 
 
 OPEN_GNT_FILEPATH = "generation/opengnt.json"
@@ -11,6 +12,9 @@ LXX_FILEPATH = 'generation/lxx.json'
 APP_NAME = 'SyntaxSearcher'
 APP_VERSION = 'alpha'
 EXECUTABLE_NAME = 'scripture_searcher.py'
+NT_STATS_PATH = 'generation/nt_stats.json'
+LXX_STATS_PATH = 'generation/lxx_stats.json'
+SECTIONS_PATH = 'sections.json'
 
 
 def get_window(word: dict, before: int, after: int) -> str:
@@ -143,6 +147,7 @@ def print_help(help_arg: list[str]):
             print('\t\tlexeme')
             print('\t\tmorphology')
             print('\t\twindow')
+            print('\t\tsection')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
@@ -185,6 +190,16 @@ def print_help(help_arg: list[str]):
             print()
             print('POST:')
             print('\tThe number of words after the input to consider. Can be zero.')
+        elif help_arg[1] == 'section':
+            print(f'USAGE: {EXECUTABLE_NAME} section SECTION...')
+            print('\tTakes the input (usually provided by AND and OR) and excludes inputs outside of the given')
+            print('\tsection(s).')
+            print()
+            print('SECTION:')
+            print('\tThe section of the Canon to include. This can be either a book name (e.g. John), or a reference')
+            print('\trange (such as John 1.1-14), or a custom defined canonical section (such as Torah).')
+            print()
+            print(f'\tCustom sections are defined in {SECTIONS_PATH}')
         else:
             print(f'Unknown search type: {help_arg[1]}')
     elif help_arg[0] == 'out':
@@ -216,6 +231,74 @@ def print_help(help_arg: list[str]):
         print(f'Unrecognized help argument: {" ".join(help_arg)}')
 
 
+def assert_same_keys(dict1: dict, dict2: dict):
+    """Asserts that the two dicts have the same keys."""
+    keys1 = dict1.keys()
+    keys2 = dict2.keys()
+
+    if len(keys1) != len(keys2):
+        raise KeyError('Dictionaries do not have the same keys.')
+    for key in keys1:
+        if key not in keys2:
+            raise KeyError('Dictionaries do not have the same keys.')
+    # No need to search through keys2; if all keys1 is in keys2, and the key sets are the same size, then all keys2
+    # must be in keys1.
+
+
+def join_stats(nt_stats: dict, lxx_stats: dict) -> dict:
+    """Joins the two statistics models together so that they can be used in joint searches."""
+    assert_same_keys(nt_stats, lxx_stats)
+
+    joint_stats = {}
+    for key in nt_stats.keys():
+        val_nt = list(nt_stats[key])
+        val_lxx = list(lxx_stats[key])
+
+        joint_stats[key] = val_lxx + val_nt  # Assumes that all fields are lists. But this is valid for now.
+
+    return joint_stats
+
+
+def load_sections(filename: str):
+    with open(filename, 'r') as f:
+        sections_json: dict = json.load(f)
+
+    # Convert the raw data for each key into a list of BookReferences.
+    result = {}
+    for k, v in sections_json.items():
+        references = []
+
+        for item in v:
+            # The field will always specify a book.
+            book = item['book']
+
+            # Grab the verse if specified.
+            ref = None
+            if 'reference' in item:
+                chapter = item['reference']['chapter']
+                verse = item['reference']['verse']
+                ref = reference.Reference.from_str(f'{chapter}.{verse}')
+
+            # Grab a destination if specified.
+            to_ref = None
+            if 'to_reference' in item:
+                chapter = item['to_reference']['chapter']
+                verse = item['to_reference']['verse']
+                to_ref = reference.Reference.from_str(f'{chapter}.{verse}')
+
+            # Build the reference instance and add it to the result.
+            if ref is None:
+                book_ref = reference.BookReference(book)
+            else:
+                book_ref = reference.BookReference(book, reference.CompoundReference(ref, to_ref))
+            references.append(book_ref)
+
+
+        result[k] = references
+
+    return result
+
+
 def main_loop(gnt_file, lxx_file):
     """The main program."""
     if len(sys.argv) == 1:
@@ -241,8 +324,20 @@ def main_loop(gnt_file, lxx_file):
             out_format_str = ' '.join(sys.argv[out_idx + 1:])
             del sys.argv[out_idx:]
 
+    # Load NT and LXX statistics and join them together.
+    with open(LXX_STATS_PATH, 'r') as f:
+        lxx_stats = json.load(f)
+    with open(NT_STATS_PATH, 'r') as f:
+        nt_stats = json.load(f)
+    joint_stats = join_stats(nt_stats, lxx_stats)
+
+    # Load custom canonical sections from the JSON file.
+    sections = load_sections(SECTIONS_PATH)
+
+    # Create a search query based upon input.
+    query_parser = query_string_parsing.QueryStringParser(joint_stats, sections)
     args = ' '.join(sys.argv[1:])
-    query = query_string_parsing.to_query(args)
+    query = query_parser.to_query(args)
 
     # Load the relevant databases.
     gnt_data = json.load(gnt_file)
