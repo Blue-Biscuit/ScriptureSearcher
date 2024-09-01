@@ -1,3 +1,6 @@
 [submodule "LXX-Rahlfs-1935"]
 	path = LXX-Rahlfs-1935
 	url = https://github.com/eliranwong/LXX-Rahlfs-1935.git
+[submodule "OpenGNT"]
+	path = OpenGNT
+	url = https://github.com/eliranwong/OpenGNT.git

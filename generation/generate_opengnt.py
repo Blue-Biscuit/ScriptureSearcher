@@ -1,12 +1,17 @@
 #!/bin/python3
 """Takes the OpenGNT database and transforms it to an easily searchable JSON model."""
 
-import helpers
+from generation_helpers import get_row_val
 import csv
 import json
+import sys
+import os
 
-INPUT_FILE_NAME = 'OpenGNT_version3_3.csv'
-OUTPUT_FILE_NAME = 'opengnt.json'
+# Define input and output files relative to the filepath location.
+_script_dir_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+_proj_root = f'{_script_dir_path}/..'
+INPUT_FILE_NAME = f'{_proj_root}/OpenGNT/OpenGNT_version3_3.csv'
+OUTPUT_FILE_NAME = f'{_proj_root}/generation/opengnt.json'
 
 OPENGNT_FIELDS = [
         "OGNTsort",
@@ -362,23 +367,23 @@ def convert_line(row: list[str], idx: int) -> dict:
     result = {}
     for field in GENERATION_FIELDS:
         if isinstance(field, tuple):
-            result[field[1]] = helpers.get_row_val(field[0], row)
+            result[field[1]] = get_row_val(field[0], row)
         elif field == 'rmac':
-            result['morph_code'] = interpret_rmac_code(helpers.get_row_val('rmac', row), helpers.get_row_val('OGNTa', row), idx)
+            result['morph_code'] = interpret_rmac_code(get_row_val('rmac', row), get_row_val('OGNTa', row), idx)
         elif field == 'Book':
             # Transform the book into a string first.
-            book_number = int(helpers.get_row_val(field, row))
+            book_number = int(get_row_val(field, row))
             result[field] = interpret_book_code(book_number)
         elif field == 'lexeme':
             # There's the possibility of there being multiple "options" for the lexeme. So the lexeme stored on
             # υδωρ is "υδωρ, υδατος." In the future, it would be beneficial to figure out whether the lexeme is always
             # the first option. (υδατος not being a lexeme, but a genitive form) But, for now, this problem is here
             # circumvented by registering them both as lexemes.
-            lexemes = helpers.get_row_val(field, row).split(',')
+            lexemes = get_row_val(field, row).split(',')
             lexemes = [x.strip() for x in lexemes]
             result[field] = lexemes
         else:
-            result[field] = helpers.get_row_val(field, row)
+            result[field] = get_row_val(field, row)
 
     # Add the word index
     result['word_index'] = idx

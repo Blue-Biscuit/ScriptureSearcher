@@ -6,8 +6,8 @@ import sys
 import query_string_parsing
 
 
-OPEN_GNT_FILEPATH = "opengnt.json"
-LXX_FILEPATH = 'lxx.json'
+OPEN_GNT_FILEPATH = "generation/opengnt.json"
+LXX_FILEPATH = 'generation/lxx.json'
 APP_NAME = 'SyntaxSearcher'
 APP_VERSION = 'alpha'
 EXECUTABLE_NAME = 'scripture_searcher.py'
