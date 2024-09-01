@@ -147,6 +147,7 @@ def print_help(help_arg: list[str]):
             print('\t\tlexeme')
             print('\t\tmorphology')
             print('\t\twindow')
+            print('\t\tsection')
         elif help_arg[1] == 'lexeme':
             print(f'USAGE: {EXECUTABLE_NAME} lexeme LEXEME [ARGS]')
             print('\tSearches for a lexeme in the dataset. Also takes certain arguments which can specify properties.')
@@ -189,6 +190,16 @@ def print_help(help_arg: list[str]):
             print()
             print('POST:')
             print('\tThe number of words after the input to consider. Can be zero.')
+        elif help_arg[1] == 'section':
+            print(f'USAGE: {EXECUTABLE_NAME} section SECTION...')
+            print('\tTakes the input (usually provided by AND and OR) and excludes inputs outside of the given')
+            print('\tsection(s).')
+            print()
+            print('SECTION:')
+            print('\tThe section of the Canon to include. This can be either a book name (e.g. John), or a reference')
+            print('\trange (such as John 1.1-14), or a custom defined canonical section (such as Torah).')
+            print()
+            print(f'\tCustom sections are defined in {SECTIONS_PATH}')
         else:
             print(f'Unknown search type: {help_arg[1]}')
     elif help_arg[0] == 'out':
