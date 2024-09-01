@@ -1,6 +1,8 @@
 """Provides functions to build search queries from command strings."""
 import text_query
 import enum
+import reference
+from reference import BookReference
 
 
 class TokenizerFSMState(enum.Enum):
@@ -23,7 +25,7 @@ class CMDToQueryFSMState(enum.Enum):
 
 class QueryStringParser:
     """Provides a method to parse a command string based upon some options given at construction."""
-    def __init__(self, data_stats: dict, sections: list[dict]):
+    def __init__(self, data_stats: dict, sections: dict):
         self.data_stats = data_stats
         self.sections = sections
 
@@ -281,16 +283,56 @@ class QueryStringParser:
         # Set up the query.
         return text_query.WindowQuery(ante, post)
 
+    def _create_selection_search_args(self, cmd_tokens: list[str]) -> list[reference.BookReference]:
+        """Takes the arguments given to a selection search and converts them into raw materials which then
+        the SelectionSearch knows how to use."""
+        result = []
+
+
+        for i, token in enumerate(cmd_tokens):
+            # If we stumble upon a custom canon section, add its contents to the result. Error if the next is a
+            # reference.
+            next_is_token = (i != len(cmd_tokens) - 1
+                             and (reference.Reference.is_reference(cmd_tokens[i+1])
+                                  or reference.CompoundReference.is_compound_reference(cmd_tokens[i+1])))
+            if token in self.sections:
+                if next_is_token:
+                    raise ValueError(f'Reference cannot follow custom canonical section: "{token} {token[i+1]}"')
+                result.extend(self.sections['contents'])
+
+            # If we stumble upon a book name, and the next is not a reference, then add it.
+            elif token in self.data_stats['book_names'] and not next_is_token:
+                result.append(BookReference(token))
+
+            # If we stumble upon a reference, add it, with the previous book name, to the result.
+            elif reference.Reference.is_reference(token) or reference.CompoundReference.is_compound_reference(token):
+                # If this is the first value, then error out, because we can't join it to the previous.
+                if i == 0:
+                    raise ValueError('Reference does not make sense without a book.')
+
+                # Ensure that the previous value is a book.
+                prev_value = cmd_tokens[i-1]
+                if prev_value not in self.data_stats['book_names']:
+                    raise ValueError(f'Cannot append reference to non-book: {prev_value}')
+
+                # Otherwise, join this to the previous and remove the current item.
+                reference_string = f'{cmd_tokens[i-1]} {token}'
+                result.append(reference.BookReference.from_str(reference_string))
+
+            # If we stumble across anything else, error out.
+            else:
+                raise ValueError(f'Invalid token: "{token}"')
+
+        return result
+
+
     def _cmd_to_section_search(self, cmd_tokens: list[str]) -> text_query.SectionSearch:
         """Builds a section search from the given tokens."""
         if len(cmd_tokens) == 0:
             raise ValueError('Invalid empty section search given. Try "-h search section" for info on this search.')
 
-        selection = ' '.join(cmd_tokens)
-        if selection not in self.data_stats['book_names']:
-            raise ValueError(f'Not a book in the LXX or NT: {selection}')
-
-        return text_query.SectionSearch(' '.join(cmd_tokens))
+        selection_search_args = self._create_selection_search_args(cmd_tokens)
+        return text_query.SectionSearch(selection_search_args)
 
     def _cmd_to_query(self, cmd: str) -> text_query.TextQuery:
         """Converts a command into a text query."""

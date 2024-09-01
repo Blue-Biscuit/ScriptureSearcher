@@ -1,7 +1,5 @@
-[
-  {
-    "name": "Torah",
-    "contents": [
+{
+  "Torah" : [
       {
         "book": "Gen"
       },
@@ -17,6 +15,5 @@
       {
         "book": "Deut"
       }
-    ]
-  }
-]
+  ]
+}

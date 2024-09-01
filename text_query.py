@@ -3,6 +3,8 @@
 import helpers
 import re
 
+import reference
+
 
 class TextQuery:
     """A superclass for different kinds of searches over the text of the NT.
@@ -145,12 +147,15 @@ class MorphologySearch(WinnowSearch):
 
 class SectionSearch(WinnowSearch):
     """Winnows down the input to a particular canonical section."""
-    def __init__(self, section: str):
-        self.section = section
+    def __init__(self, sections: list[reference.BookReference]):
+        self.sections = sections
 
     def winnow(self, x: dict) -> bool:
-        # the section is a book for now.
-        return x['Book'] == self.section
+        """If the 'x' is in any of the sections, then return true."""
+        ref = reference.BookReference.from_str(f'{x["Book"]} {x["Chapter"]}.{x["Verse"]}')
+
+        tests = [ref in x for x in self.sections]
+        return True in tests
 
 
 class AnteQuery(TextQuery):

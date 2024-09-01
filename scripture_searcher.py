@@ -4,6 +4,8 @@ to help further biblical studies."""
 import json
 import sys
 import query_string_parsing
+import reference
+from reference import CompoundReference
 
 OPEN_GNT_FILEPATH = "opengnt.json"
 LXX_FILEPATH = 'lxx.json'
@@ -243,6 +245,43 @@ def join_stats(nt_stats: dict, lxx_stats: dict) -> dict:
     return joint_stats
 
 
+def load_sections(filename: str):
+    with open(filename, 'r') as f:
+        sections_json: dict = json.load(f)
+
+    # Convert the raw data for each key into a list of BookReferences.
+    result = {}
+    for k, v in sections_json.items():
+        references = []
+
+        for item in v:
+            # The field will always specify a book.
+            book = item['book']
+
+            # Grab the verse if specified.
+            ref = None
+            if 'reference' in item:
+                chapter = item['reference']['chapter']
+                verse = item['reference']['verse']
+                ref = reference.Reference.from_str(f'{chapter}.{verse}')
+
+            # Grab a destination if specified.
+            to_ref = None
+            if 'to_reference' in item:
+                chapter = item['to_reference']['chapter']
+                verse = item['to_reference']['verse']
+                to_ref = reference.Reference.from_str(f'{chapter}.{verse}')
+
+            # Build the reference instance and add it to the result.
+            book_ref = reference.BookReference(book, reference.CompoundReference(ref, to_ref))
+            references.append(book_ref)
+
+
+        result[k] = references
+
+    return result
+
+
 def main_loop(gnt_file, lxx_file):
     """The main program."""
     if len(sys.argv) == 1:
@@ -276,8 +315,7 @@ def main_loop(gnt_file, lxx_file):
     joint_stats = join_stats(nt_stats, lxx_stats)
 
     # Load custom canonical sections from the JSON file.
-    with open('sections.json', 'r') as f:
-        sections = json.load(f)
+    sections = load_sections('sections.json')
 
     # Create a search query based upon input.
     query_parser = query_string_parsing.QueryStringParser(joint_stats, sections)
