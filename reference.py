@@ -30,6 +30,10 @@ class Reference:
         regex = re.compile('[0-9]+([.:][0-9]+[a-z]?)?')
         return bool(regex.match(string))
 
+    def is_chapter(self) -> bool:
+        """True if this instance is just a chapter."""
+        return self.verse_number is None
+
     def __eq__(self, other: 'Reference'):
         return (self.chapter_number == other.chapter_number
                 and self.verse_number == other.verse_number
@@ -66,6 +70,31 @@ class Reference:
 
     def __str__(self):
         return f'{self.chapter_number}.{self.verse_number}' + self.verse_letter if self.verse_letter is not None else ''
+
+    def __contains__(self, item):
+        """True if this reference encompasses the input."""
+        result = False
+
+        # If this instance is just a chapter, return true if this encompasses that chapter.
+        if self.is_chapter():
+            # If the input is a single reference, return true if the chapter is the same.
+            if type(item) is Reference:
+                result = item.chapter_number == self.chapter_number
+
+            # If the input is a compound reference, return true if the chapter entirely encompasses the reference.
+            elif type(item) is CompoundReference:
+                from_ref = item.from_ref
+                to_ref = item.to_ref
+                result = from_ref.chapter_number == self.chapter_number and to_ref.chapter_number == self.chapter_number
+
+        # Otherwise, just compare the input to see if it precisely matches.
+        else:
+            if type(item) is Reference:
+                result = item == self
+            elif type(item) is CompoundReference:
+                result = not item.is_range() and item.from_ref.chapter_number == self.chapter_number
+
+        return result
 
     @staticmethod
     def from_str(string: str) -> 'Reference':
@@ -126,11 +155,9 @@ class CompoundReference:
             return str(self.from_ref)
 
     def __contains__(self, item):
-        # If the current instance is not a range, then the only way in which it can be True is if the lhs equals
-        # the rhs.
+        # If the current instance is not a range, then just check if the input is contained within the lhs.
         if not self.is_range():
-            ref = item if type(item) is Reference else item.from_ref
-            return self.from_ref == ref
+            result = item in self.from_ref
 
         # If this is not a range, or if it is a Reference, check if it is within the bounds.
         elif type(item) is Reference or (type(item) is CompoundReference and not item.is_range()):
@@ -138,11 +165,13 @@ class CompoundReference:
             if type(item) is CompoundReference:
                 ref = item.from_ref
 
-            return self.from_ref <= ref <= self.to_ref
+            result = self.from_ref <= ref <= self.to_ref
 
         # If this is a range, then check if it is a subset of the current instance.
         else:
-            return item.from_ref >= self.from_ref and item.to_ref <= self.to_ref
+            result = item.from_ref >= self.from_ref and item.to_ref <= self.to_ref
+
+        return result
 
     def is_range(self) -> bool:
         """True if this has a destination."""
