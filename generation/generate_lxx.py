@@ -4,12 +4,18 @@
 import csv
 import json
 import re
+import os
+import sys
 
-OUT_FILE = 'lxx.json'
-PATH_TO_LEXEMES = '../LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
-PATH_TO_VERSIFICATION = '../LXX-Rahlfs-1935/08_versification/ossp/versification_original.csv'
-PATH_TO_MORPHOLOGY = '../LXX-Rahlfs-1935/03a_morphology_with_JTauber_patches/patched_623693.csv'
-PATH_TO_WORDLIST = '../LXX-Rahlfs-1935/01_wordlist_unicode/text_accented.csv'
+_script_dir_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+_proj_root = f'{_script_dir_path}/..'
+_gen_path = f'{_proj_root}/generation'
+_lxx_path = f'{_proj_root}/LXX-Rahlfs-1935'
+OUT_FILE = f'{_gen_path}/lxx.json'
+PATH_TO_LEXEMES = f'{_lxx_path}/12-Marvel.Bible/09-lexemes.csv'
+PATH_TO_VERSIFICATION = f'{_lxx_path}/08_versification/ossp/versification_original.csv'
+PATH_TO_MORPHOLOGY = f'{_lxx_path}/03a_morphology_with_JTauber_patches/patched_623693.csv'
+PATH_TO_WORDLIST = f'{_lxx_path}/01_wordlist_unicode/text_accented.csv'
 NUM_WORDS_IN_LXX = 623693
 
 
