@@ -5,7 +5,7 @@ import helpers
 import csv
 import json
 
-INPUT_FILE_NAME = 'OpenGNT_version3_3.csv'
+INPUT_FILE_NAME = '../OpenGNT_version3_3.csv'
 OUTPUT_FILE_NAME = 'opengnt.json'
 
 OPENGNT_FIELDS = [

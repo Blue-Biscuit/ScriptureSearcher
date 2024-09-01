@@ -6,10 +6,10 @@ import json
 import re
 
 OUT_FILE = 'lxx.json'
-PATH_TO_LEXEMES = 'LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
-PATH_TO_VERSIFICATION = 'LXX-Rahlfs-1935/08_versification/ossp/versification_original.csv'
-PATH_TO_MORPHOLOGY = 'LXX-Rahlfs-1935/03a_morphology_with_JTauber_patches/patched_623693.csv'
-PATH_TO_WORDLIST = 'LXX-Rahlfs-1935/01_wordlist_unicode/text_accented.csv'
+PATH_TO_LEXEMES = '../LXX-Rahlfs-1935/12-Marvel.Bible/09-lexemes.csv'
+PATH_TO_VERSIFICATION = '../LXX-Rahlfs-1935/08_versification/ossp/versification_original.csv'
+PATH_TO_MORPHOLOGY = '../LXX-Rahlfs-1935/03a_morphology_with_JTauber_patches/patched_623693.csv'
+PATH_TO_WORDLIST = '../LXX-Rahlfs-1935/01_wordlist_unicode/text_accented.csv'
 NUM_WORDS_IN_LXX = 623693
 
 
