@@ -220,3 +220,21 @@ class BookReference:
     def is_range(self) -> bool:
         """True if this reference specifies a range."""
         return not self.is_book_reference() and self.reference.is_range()
+
+    @staticmethod
+    def from_str(string: str):
+        """Builds a BookReference from a string."""
+        string = string.strip()
+        tokens = string.split()  # The first token will be the book name. Second will be a reference, if present.
+
+        # Argument checking.
+        if len(tokens) == 0 or len(tokens) > 2:
+            raise ValueError(f'Invalid BookReference: "{string}"')
+
+        # If this is only a book, parse it as such.
+        if len(tokens) == 1:
+            return BookReference(tokens[0])
+
+        # If this a book and a reference, parse both.
+        else:  # len(tokens) = 2
+            return BookReference(tokens[0], CompoundReference.from_str(tokens[1]))
