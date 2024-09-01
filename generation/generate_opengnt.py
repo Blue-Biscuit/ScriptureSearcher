@@ -12,6 +12,7 @@ _script_dir_path = os.path.dirname(os.path.abspath(sys.argv[0]))
 _proj_root = f'{_script_dir_path}/..'
 INPUT_FILE_NAME = f'{_proj_root}/OpenGNT/OpenGNT_version3_3.csv'
 OUTPUT_FILE_NAME = f'{_proj_root}/generation/opengnt.json'
+OUTPUT_STATS = f'{_proj_root}/generation/nt_stats.json'
 
 OPENGNT_FIELDS = [
         "OGNTsort",
@@ -424,7 +425,7 @@ def process_file(file):
 
     # Get some statistics on the dataset, so that we can output it.
     print('Dumping statistics...')
-    with open('nt_stats.json', 'w', encoding='utf-8') as out_f:
+    with open(OUTPUT_STATS, 'w', encoding='utf-8') as out_f:
         json.dump(to_stats(gnt_data_json), out_f)
 
 

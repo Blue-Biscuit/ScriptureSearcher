@@ -5,13 +5,16 @@ import json
 import sys
 import query_string_parsing
 import reference
-from reference import CompoundReference
+
 
 OPEN_GNT_FILEPATH = "generation/opengnt.json"
 LXX_FILEPATH = 'generation/lxx.json'
 APP_NAME = 'SyntaxSearcher'
 APP_VERSION = 'alpha'
 EXECUTABLE_NAME = 'scripture_searcher.py'
+NT_STATS_PATH = 'generation/nt_stats.json'
+LXX_STATS_PATH = 'generation/lxx_stats.json'
+SECTIONS_PATH = 'sections.json'
 
 
 def get_window(word: dict, before: int, after: int) -> str:
@@ -311,14 +314,14 @@ def main_loop(gnt_file, lxx_file):
             del sys.argv[out_idx:]
 
     # Load NT and LXX statistics and join them together.
-    with open('lxx_stats.json', 'r') as f:
+    with open(LXX_STATS_PATH, 'r') as f:
         lxx_stats = json.load(f)
-    with open('nt_stats.json', 'r') as f:
+    with open(NT_STATS_PATH, 'r') as f:
         nt_stats = json.load(f)
     joint_stats = join_stats(nt_stats, lxx_stats)
 
     # Load custom canonical sections from the JSON file.
-    sections = load_sections('sections.json')
+    sections = load_sections(SECTIONS_PATH)
 
     # Create a search query based upon input.
     query_parser = query_string_parsing.QueryStringParser(joint_stats, sections)

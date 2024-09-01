@@ -12,6 +12,7 @@ _proj_root = f'{_script_dir_path}/..'
 _gen_path = f'{_proj_root}/generation'
 _lxx_path = f'{_proj_root}/LXX-Rahlfs-1935'
 OUT_FILE = f'{_gen_path}/lxx.json'
+OUT_STATS = f'{_gen_path}/lxx_stats.json'
 PATH_TO_LEXEMES = f'{_lxx_path}/12-Marvel.Bible/09-lexemes.csv'
 PATH_TO_VERSIFICATION = f'{_lxx_path}/08_versification/ossp/versification_original.csv'
 PATH_TO_MORPHOLOGY = f'{_lxx_path}/03a_morphology_with_JTauber_patches/patched_623693.csv'
@@ -380,7 +381,7 @@ def main():
 
     # Dump statistics.
     print('Writing statistics...')
-    with open('lxx_stats.json', 'w') as f:
+    with open(OUT_STATS, 'w') as f:
         json.dump(to_stats(lxx_data), f)
 
     print('Done!')
