@@ -2,6 +2,7 @@
 import re
 
 import helpers
+from helpers import assert_non_null
 
 
 def _split_verse_into_num_and_char(verse_string: str) -> (str, str):
@@ -106,8 +107,9 @@ class Reference:
 class CompoundReference:
     """A reference which may include a destination reference."""
     def __init__(self, from_ref: Reference, to_ref: Reference = None):
-        if to_ref is not None and from_ref >= to_ref:
-            raise ValueError(f'References must be from lesser to greater (found {str(from_ref)}-{str(to_ref)})')
+        assert_non_null(from_ref, 'from_ref')
+        if to_ref is None:
+            to_ref = from_ref
 
         self.from_ref = from_ref
         self.to_ref = to_ref
@@ -118,9 +120,28 @@ class CompoundReference:
         else:
             return str(self.from_ref)
 
+    def __contains__(self, item: Reference | 'CompoundReference'):
+        # If the current instance is not a range, then the only way in which it can be True is if the lhs equals
+        # the rhs.
+        if not self.is_range():
+            ref = item if type(item) is Reference else item.from_ref
+            return self.from_ref == ref
+
+        # If this is not a range, or if it is a Reference, check if it is within the bounds.
+        elif type(item) is Reference or (type(item) is CompoundReference and not item.is_range()):
+            ref = item
+            if type(item) is CompoundReference:
+                ref = item.from_ref
+
+            return self.from_ref <= ref <= self.to_ref
+
+        # If this is a range, then check if it is a subset of the current instance.
+        else:
+            return item.from_ref >= self.from_ref and item.to_ref <= self.to_ref
+
     def is_range(self) -> bool:
         """True if this has a destination."""
-        return self.to_ref is not None
+        return self.from_ref != self.to_ref
 
     @staticmethod
     def is_compound_reference(string: str) -> bool:
@@ -188,6 +209,9 @@ class BookReference:
             return self.book
         else:
             return f'{self.book} {str(self.reference)}'
+
+    def __contains__(self, item: 'BookReference'):
+        return self.book == item.book and item.reference in self.reference
 
     def is_book_reference(self) -> bool:
         """True if the reference is just a book."""
