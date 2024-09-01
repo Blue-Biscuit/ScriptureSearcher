@@ -93,6 +93,11 @@ class Reference:
             verse_part = string[separator_index+1:]
             verse_letter = None
 
+            # In some books in the LXX, there is a weird occurrence where sometimes a verse has a '/' in it. I presume
+            # this is because of different numbering systems. A
+            if '/' in verse_part:
+                verse_part = verse_part[0:verse_part.index('/')]
+
             # If there are characters in the verse part, we need to separate that out from the integer part.
             if re.match('.*[a-z]', verse_part):
                 verse_part, verse_letter = _split_verse_into_num_and_char(verse_part)
@@ -120,7 +125,7 @@ class CompoundReference:
         else:
             return str(self.from_ref)
 
-    def __contains__(self, item: Reference | 'CompoundReference'):
+    def __contains__(self, item):
         # If the current instance is not a range, then the only way in which it can be True is if the lhs equals
         # the rhs.
         if not self.is_range():
@@ -211,7 +216,10 @@ class BookReference:
             return f'{self.book} {str(self.reference)}'
 
     def __contains__(self, item: 'BookReference'):
-        return self.book == item.book and item.reference in self.reference
+        if self.is_book_reference():
+            return self.book == item.book
+        else:
+            return self.book == item.book and item.reference in self.reference
 
     def is_book_reference(self) -> bool:
         """True if the reference is just a book."""

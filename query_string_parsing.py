@@ -298,11 +298,12 @@ class QueryStringParser:
             if token in self.sections:
                 if next_is_token:
                     raise ValueError(f'Reference cannot follow custom canonical section: "{token} {token[i+1]}"')
-                result.extend(self.sections['contents'])
+                result.extend(self.sections[token])
 
             # If we stumble upon a book name, and the next is not a reference, then add it.
-            elif token in self.data_stats['book_names'] and not next_is_token:
-                result.append(BookReference(token))
+            elif token in self.data_stats['book_names']:
+                if not next_is_token:
+                    result.append(BookReference(token))
 
             # If we stumble upon a reference, add it, with the previous book name, to the result.
             elif reference.Reference.is_reference(token) or reference.CompoundReference.is_compound_reference(token):
@@ -324,7 +325,6 @@ class QueryStringParser:
                 raise ValueError(f'Invalid token: "{token}"')
 
         return result
-
 
     def _cmd_to_section_search(self, cmd_tokens: list[str]) -> text_query.SectionSearch:
         """Builds a section search from the given tokens."""

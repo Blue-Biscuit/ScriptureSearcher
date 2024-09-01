@@ -273,7 +273,10 @@ def load_sections(filename: str):
                 to_ref = reference.Reference.from_str(f'{chapter}.{verse}')
 
             # Build the reference instance and add it to the result.
-            book_ref = reference.BookReference(book, reference.CompoundReference(ref, to_ref))
+            if ref is None:
+                book_ref = reference.BookReference(book)
+            else:
+                book_ref = reference.BookReference(book, reference.CompoundReference(ref, to_ref))
             references.append(book_ref)
 
 
