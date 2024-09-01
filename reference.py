@@ -21,8 +21,8 @@ class Reference:
     """A single chapter/verse reference (so no 1.1-2)."""
     def __init__(self, chapter_number: int, verse_number: int = None, verse_letter: str = None):
         self.chapter_number = chapter_number
-        self.verse_number = verse_number
-        self.verse_letter = verse_letter
+        self.verse_number: str | None = verse_number
+        self.verse_letter: str | None = verse_letter
 
     @staticmethod
     def is_reference(string: str) -> bool:
@@ -41,23 +41,30 @@ class Reference:
 
     def __lt__(self, other: 'Reference'):
         """A reference that is "less than" another is defined as one which comes in a book first."""
-        # Deal with the chapter and verse number, since these are easier.
-        if self.chapter_number >= other.chapter_number:
-            return False
-        elif self.verse_number >= other.verse_number:
+        # Deal with the chapter; this is the only easy one.
+        if self.chapter_number > other.chapter_number:
             return False
 
-        # If the second character is None but the first is not, then that means the second is earlier (hasn't gotten
-        # to characters yet).
-        if self.verse_letter is not None and other.verse_letter is None:
+        # Deal with the verse number. If either is simply a chapter reference, then simply compare the chapter numbers.
+        # Otherwise, if the verse is bigger, fail out.
+        elif self.is_chapter() or other.is_chapter():
+            return self.chapter_number < other.chapter_number
+        elif self.verse_number > other.verse_number:
             return False
 
-        # If both are None, then these are equivalent.
-        if self.verse_letter is None and other.verse_letter is None:
-            return False
+        # If both verse letters are none, then compare the equality of the verse number for the result.
+        elif self.verse_letter is None and other.verse_letter is None:
+            return self.verse_number != other.verse_number
+
+        # If either are None, then return true if it is the second one (because if a letter is specified, that
+        # means that it comes later. 30 is earlier in the document than 30a, theoretically).
+        elif None in (self.verse_letter, other.verse_letter):
+            return other.verse_letter is None
 
         # Otherwise, compare ord() values (these should all be ASCII).
-        return ord(self.verse_letter) < ord(other.verse_letter)
+        else:
+            # noinspection PyTypeChecker
+            return ord(self.verse_letter) < ord(other.verse_letter)
 
     def __le__(self, other):
         return self < other or self == other
@@ -69,7 +76,10 @@ class Reference:
         return self > other or self == other
 
     def __str__(self):
-        return f'{self.chapter_number}.{self.verse_number}' + self.verse_letter if self.verse_letter is not None else ''
+        if self.verse_number is None:
+            return str(self.chapter_number)
+        else:
+            return f'{self.chapter_number}.{self.verse_number}{self.verse_letter if self.verse_letter is not None else ""}'
 
     def __contains__(self, item):
         """True if this reference encompasses the input."""
@@ -275,3 +285,9 @@ class BookReference:
         # If this a book and a reference, parse both.
         else:  # len(tokens) = 2
             return BookReference(tokens[0], CompoundReference.from_str(tokens[1]))
+
+if __name__ == '__main__':
+    print(str(Reference(1, 1)))
+    print(str(Reference(1, 1, 'a')))
+    print(str(Reference(1)))
+    print(Reference(1, 1, 'a') < Reference(1, 1, 'b'))
