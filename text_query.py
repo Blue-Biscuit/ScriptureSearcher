@@ -6,7 +6,7 @@ import re
 import reference
 
 
-class TextQuery:
+class Search:
     """A superclass for different kinds of searches over the text of the NT.
     Should be extended with unique fields and a search() function."""
     def search(self, dataset: list[dict[str, str|int]]) -> list[dict[str, str|int]]:
@@ -15,10 +15,10 @@ class TextQuery:
         raise NotImplementedError('Call search() from a subclass!')
 
 
-class AndQuery(TextQuery):
+class AndSearch(Search):
     """A query which performs an AND operation with two queries."""
 
-    def __init__(self, lhs: TextQuery, rhs: TextQuery):
+    def __init__(self, lhs: Search, rhs: Search):
         self.lhs = lhs
         self.rhs = rhs
 
@@ -33,10 +33,10 @@ class AndQuery(TextQuery):
         return rhs_result
 
 
-class OrQuery(TextQuery):
+class OrSearch(Search):
     """A query which performs an OR operation with two queries."""
 
-    def __init__(self, lhs: TextQuery, rhs: TextQuery):
+    def __init__(self, lhs: Search, rhs: Search):
         self.lhs = lhs
         self.rhs = rhs
 
@@ -52,7 +52,7 @@ class OrQuery(TextQuery):
         return lhs_result
 
 
-class WinnowSearch(TextQuery):
+class WinnowSearch(Search):
     """A search which winnows down its input based upon a condition. This is abstract, and should not be used
     of itself, but through a subclass."""
     def search(self, dataset: list[dict]) -> list[dict]:
@@ -69,7 +69,7 @@ class WinnowSearch(TextQuery):
         return dataset
 
 
-class LexemeQuery(WinnowSearch):
+class LexemeSearch(WinnowSearch):
     """Searches by lexeme."""
 
     def __init__(self, lexeme: str):
@@ -158,7 +158,7 @@ class SectionSearch(WinnowSearch):
         return True in tests
 
 
-class AnteQuery(TextQuery):
+class AnteSearch(Search):
     """Gets all terms a certain number of terms before the input term."""
 
     def __init__(self, number: int):
@@ -184,7 +184,7 @@ class AnteQuery(TextQuery):
         return result
 
 
-class PostQuery(TextQuery):
+class PostSearch(Search):
     """Gets all terms a certain number of terms after the input term."""
 
     def __init__(self, number: int):
@@ -210,14 +210,14 @@ class PostQuery(TextQuery):
         return result
 
 
-class WindowQuery(OrQuery):
+class WindowSearch(OrSearch):
     """Gets all terms in a window before and after the input. This is a shorthand for an OrQuery between an ante and
     post."""
 
     def __init__(self, ante: int, post: int):
         self.ante_num = ante
         self.post_num = post
-        super().__init__(AnteQuery(ante), PostQuery(post))
+        super().__init__(AnteSearch(ante), PostSearch(post))
 
     def __str__(self):
         return f'<WindowSearch: {self.ante_num}, {self.post_num}>'

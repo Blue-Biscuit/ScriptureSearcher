@@ -102,7 +102,7 @@ class QueryStringParser:
 
         return tokens
 
-    def _cmd_to_lexeme_search(self, cmd_tokens: list[str]) -> text_query.LexemeQuery:
+    def _cmd_to_lexeme_search(self, cmd_tokens: list[str]) -> text_query.LexemeSearch:
         """Converts the given string into a lexeme search."""
         # Error out if tokens is empty.
         if len(cmd_tokens) == 0:
@@ -231,7 +231,7 @@ class QueryStringParser:
             raise ValueError('Syntax: lacking argument to --person')
 
         # Construct the final query.
-        query = text_query.LexemeQuery(lexeme)
+        query = text_query.LexemeSearch(lexeme)
         query.case = case
         query.number = number
         query.gender = gender
@@ -257,7 +257,7 @@ class QueryStringParser:
         # Write the fields to a new search.
         return text_query.MorphologySearch(cmd_tokens[0], cmd_tokens[1])
 
-    def _cmd_to_window_search(self, cmd_tokens: list[str]) -> text_query.WindowQuery:
+    def _cmd_to_window_search(self, cmd_tokens: list[str]) -> text_query.WindowSearch:
         """Converts the given cmd to a window query."""
         # Do error checking on everything.
         if len(cmd_tokens) == 0:
@@ -281,7 +281,7 @@ class QueryStringParser:
             )
 
         # Set up the query.
-        return text_query.WindowQuery(ante, post)
+        return text_query.WindowSearch(ante, post)
 
     def _create_selection_search_args(self, cmd_tokens: list[str]) -> list[reference.BookReference]:
         """Takes the arguments given to a selection search and converts them into raw materials which then
@@ -334,7 +334,7 @@ class QueryStringParser:
         selection_search_args = self._create_selection_search_args(cmd_tokens)
         return text_query.SectionSearch(selection_search_args)
 
-    def _cmd_to_query(self, cmd: str) -> text_query.TextQuery:
+    def _cmd_to_query(self, cmd: str) -> text_query.Search:
         """Converts a command into a text query."""
         cmd_tokens = cmd.split()
         if 0 == len(cmd_tokens):
@@ -383,10 +383,10 @@ class QueryStringParser:
             i = i + 1
         return result
 
-    def _argument_to_query(self, arg) -> text_query.TextQuery:
+    def _argument_to_query(self, arg) -> text_query.Search:
         """Converts the given op argument to a query. This is necessary because the arguments can be of different types:
         a token list, an already-formed query, etc."""
-        if issubclass(type(arg), text_query.TextQuery):
+        if issubclass(type(arg), text_query.Search):
             return arg
         elif type(arg) is str and self._is_cmd(arg):
             return self._cmd_to_query(arg)
@@ -395,7 +395,7 @@ class QueryStringParser:
         else:
             raise ValueError(f'Syntax: unexpected argument to op, {arg}')
 
-    def _tokens_list_to_query(self, tokens: list[str]) -> text_query.TextQuery:
+    def _tokens_list_to_query(self, tokens: list[str]) -> text_query.Search:
         """Converts a list of tokens to a query."""
 
         # Get rid of the parentheses, for easier processing.
@@ -410,7 +410,7 @@ class QueryStringParser:
                 raise ValueError('Syntax: no argument to &.')
             lhs = self._argument_to_query(no_parens_list[i-1])
             rhs = self._argument_to_query(no_parens_list[i+1])
-            and_query = text_query.AndQuery(lhs, rhs)
+            and_query = text_query.AndSearch(lhs, rhs)
             del no_parens_list[i-1:i+2]
             no_parens_list.insert(i-1, and_query)
 
@@ -423,7 +423,7 @@ class QueryStringParser:
                 raise ValueError('Syntax: no argument to &.')
             lhs = self._argument_to_query(no_parens_list[i - 1])
             rhs = self._argument_to_query(no_parens_list[i + 1])
-            and_query = text_query.OrQuery(lhs, rhs)
+            and_query = text_query.OrSearch(lhs, rhs)
             del no_parens_list[i - 1:i + 2]
             no_parens_list.insert(i - 1, and_query)
 
@@ -432,7 +432,7 @@ class QueryStringParser:
             raise ValueError("Bug: Something's on fire. Tell Andrew!!!")
         return self._argument_to_query(no_parens_list[0])
 
-    def to_query(self, command: str) -> text_query.TextQuery:
+    def to_query(self, command: str) -> text_query.Search:
         """Converts the command into a query."""
         # Get the tokens in the command string.
         tokens = self._tokenize_command_str(command)
